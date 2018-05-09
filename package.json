@@ -1,0 +1,98 @@
+{
+	"name": "haxe-debug",
+	"displayName": "HXCPP Debugger",
+	"version": "1.2.0",
+	"publisher": "vshaxe",
+	"license": "MIT",
+	"description": "Debugger for HXCPP",
+	"author": {
+		"name": "vshaxe"
+	},
+	"engines": {
+		"vscode": "^1.4.0"
+	},
+	"categories": [
+		"Debuggers"
+	],
+	"galleryBanner": {
+		"theme": "dark",
+		"color": "#d31a20"
+	},
+	"keywords": [
+		"haxe"
+	],
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/vshaxe/flash-debugger.git"
+	},
+	"bugs": {
+		"url": "https://github.com/vshaxe/flash-debugger/issues"
+	},
+	"dependencies": {
+		"vscode-debugprotocol": "1.8.0-pre.3",
+		"vscode-debugadapter": "1.8.0-pre.4"
+	},
+	"devDependencies": {
+		"typescript": "^1.8.5",
+		"mocha": "^2.4.5"
+	},
+	"scripts": {
+		"vscode:prepublish": "haxe build.hxml"
+	},
+	"contributes": {
+		"debuggers": [
+			{
+				"type": "hxcpp",
+				"label": "HXCPP",
+				"enableBreakpointsFor": {
+					"languageIds": [
+						"haxe"
+					]
+				},
+				"program": "./bin/hxcpp_adapter.js",
+				"runtime": "node",
+				"configurationAttributes": {
+					"launch": {
+						"required": [
+							"program"
+						],
+						"properties": {
+							"program": {
+								"type": "string",
+								"description": "full path to a swf file.",
+								"default": "${workspaceRoot}/bin/your.swf"
+							},
+							"receiveAdapterOutput": {
+								"type": "bool",
+								"description": "redirect adapter log to debug console",
+								"default": false
+							}
+						}
+					},
+					"attach": {
+						"properties": {
+							"request": {
+								"type": "string",
+								"description": "Attaches to a swf which is launched manually",
+								"default": "attach"
+							},
+							"receiveAdapterOutput": {
+								"type": "bool",
+								"description": "redirect adapter log to debug console",
+								"default": false
+							}
+						}
+					}
+				},
+				"initialConfigurations": [
+					{
+						"name": "Hxcpp",
+						"type": "hxcpp",
+						"request": "launch",
+						"program": "${workspaceRoot}/bin/your.swf"
+					}
+				]
+			}
+		]
+	}
+}

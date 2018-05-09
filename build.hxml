@@ -1,0 +1,9 @@
+-cp src
+-main Main
+-lib vscode-debugadapter
+-lib hxnodejs
+-lib hxcpp-debugger
+-js bin/hxcpp_adapter.js
+
+#--next
+#-cmd "node bin/test.js"
