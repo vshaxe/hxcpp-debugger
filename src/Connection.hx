@@ -137,7 +137,6 @@ class Connection extends EventEmitter<Connection> {
                 HaxeProtocol.readClientIdentification(input);
                 trace("Connection istablished");
                 isEstablished = true;
-                waitOutputLoop();
                 return Promise.resolve(0);
             })
             .catchError(function(e:Dynamic) {
@@ -146,6 +145,10 @@ class Connection extends EventEmitter<Connection> {
                 socket.end();
                 return Promise.reject(e);
             });
+    }
+
+    public function start() {
+        waitOutputLoop();
     }
 
     function waitOutputLoop() {

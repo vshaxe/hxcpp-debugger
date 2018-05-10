@@ -3,6 +3,7 @@ import protocol.debug.Types;
 import js.node.Buffer;
 import js.node.Net;
 import js.node.ChildProcess;
+import adapter.DebugSession;
 import js.node.child_process.ChildProcess.ChildProcessEvent;
 import js.node.net.Socket;
 import js.node.stream.Readable.ReadableEvent;
@@ -51,6 +52,8 @@ class Main extends adapter.DebugSession {
             Connection.create(socket)
                 .then(function(connection) {
                     this.connection = connection;
+					connection.on(Connection.INFO_MESSAGE, onInfoMessage);
+					connection.start();
 				})
 				.then(function(_) {
 					return connection.sendCommand(Files);
@@ -105,12 +108,7 @@ class Main extends adapter.DebugSession {
 			if (alreadySet.exists(bs.line))
 				continue;
 
-			var b:Breakpoint = {
-				verified:true,
-				source:args.source,
-				line:bs.line,
-				column:bs.column
-			};
+			var b = new Breakpoint(true, bs.line, bs.column, cast args.source);
 			newBreakpoints.push(b);
 		}
 
@@ -149,6 +147,17 @@ class Main extends adapter.DebugSession {
 		sendResponse(response);
 	}
 
+	override function stackTraceRequest(response:StackTraceResponse, args:StackTraceArguments):Void {
+		trace('stackTraceRequest');
+		trace('args1: ${haxe.Json.stringify(args)}');
+		var threadStatus = debuggerState.threads[args.threadId];
+		response.body = {
+			totalFrames:threadStatus.where.length,
+			stackFrames:cast threadStatus.where
+		};
+		sendResponse(response);
+	}
+
 	override function threadsRequest(response:ThreadsResponse):Void {
 		trace('threadsRequest');
 		connection.sendCommand(WhereAllThreads)
@@ -164,14 +173,18 @@ class Main extends adapter.DebugSession {
 					threads:[]
 				};
 				for (t in threads) {
-					response.body.threads.push({
-						id:t.id,
-						name:t.name
-					});
+					response.body.threads.push(new Thread(t.id, t.name));
 				}
-				trace(haxe.Json.stringify(response.body.threads));
 				sendResponse(response);
 			});
+	}
+
+	function onInfoMessage(message:Message) {
+		switch (message) {
+			case ThreadStopped(num, frame, className, funName, fileName, line):
+				sendEvent(new StoppedEvent("entry", num));
+			default:
+		}
 	}
 
     static function main() {
