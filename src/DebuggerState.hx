@@ -10,12 +10,14 @@ typedef ThreadState = {
     var where:Array<StackFrame>;
 }
 
+
 class DebuggerState {
 
     public var workspaceToAbsPath:Map<String, String>;
     public var absToWorkspace:Map<String, String>;
     public var threads:Map<Int, ThreadState>;
-
+    public var initializing:Bool;
+    
     var breakpoints:Map<String, Array<Breakpoint>>;
     var workspaceFiles:Array<String>;
     var absFiles:Array<String>;
@@ -59,11 +61,16 @@ class DebuggerState {
         }
     }
 
+    public function updateThreadStatus(id:Int, message:Message) {
+        
+    }
+
     public function calcPathDictionaries() {
         for (i in 0...workspaceFiles.length) {
             workspaceToAbsPath[workspaceFiles[i]] = absFiles[i];
             absToWorkspace[absFiles[i]] = workspaceFiles[i];
         }
+        trace("calcPathDictionaries done!!!");
     }
 
     function parseFrameList(frameList:FrameList) {
@@ -71,7 +78,9 @@ class DebuggerState {
         while (true) {
             switch (frameList) {
                 case Frame(isCurrent, num, className, functionName, file, line, next):
-                    result.push(cast new StackFrame(num, '$className.$functionName', new Source(className, file), line));
+                    var fullPath = workspaceToAbsPath.exists(file) ? workspaceToAbsPath[file] : file;
+                    trace(fullPath);
+                    result.push(cast new StackFrame(num, '$className.$functionName', new Source(className, fullPath), line));
                     frameList = next;
 
                 case Terminator:

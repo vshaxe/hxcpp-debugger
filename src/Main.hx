@@ -52,7 +52,7 @@ class Main extends adapter.DebugSession {
             Connection.create(socket)
                 .then(function(connection) {
                     this.connection = connection;
-					connection.on(Connection.INFO_MESSAGE, onInfoMessage);
+					debuggerState.initializing = true;
 					connection.start();
 				})
 				.then(function(_) {
@@ -74,10 +74,18 @@ class Main extends adapter.DebugSession {
 						default:
 							trace('UNEXPECTED MESSAGE: $message');
 					}
-				}).then(function(_) {
+					
+				})
+				.then(function(_) {
 					sendResponse(response);
 					sendEvent(new adapter.DebugSession.InitializedEvent());
-                });
+					debuggerState.initializing = false;
+					return updateThreadStatus();
+				})
+				.then(function(_)) {
+					checkThreads();
+					connection.on(Connection.INFO_MESSAGE, onInfoMessage);
+				});
 		}
 
 		function onExit(_, _) {
@@ -160,14 +168,8 @@ class Main extends adapter.DebugSession {
 
 	override function threadsRequest(response:ThreadsResponse):Void {
 		trace('threadsRequest');
-		connection.sendCommand(WhereAllThreads)
-			.then(function(message) {
-				switch (message) {
-					case ThreadsWhere(list):
-						debuggerState.setThreadsStatus(list);
-					default:
-						'UNEXPECTED: $message';
-				}
+		updateThreadStatus()
+			.then(function(_) {
 				var threads = debuggerState.threads;
 				response.body = {
 					threads:[]
@@ -179,11 +181,49 @@ class Main extends adapter.DebugSession {
 			});
 	}
 
+	function updateThreadStatus():Promise<Int> {
+		return connection.sendCommand(WhereAllThreads)
+			.then(function(message) {
+				switch (message) {
+					case ThreadsWhere(list):
+						debuggerState.setThreadsStatus(list);
+					default:
+						'UNEXPECTED: $message';
+				}
+				return Promise.resolve(0);
+			});
+	}
+
 	function onInfoMessage(message:Message) {
+		trace('onInfoMessage: $message');
 		switch (message) {
-			case ThreadStopped(num, frame, className, funName, fileName, line):
-				sendEvent(new StoppedEvent("entry", num));
+			case ThreadStopped(_):
+				checkThreads();
 			default:
+		}
+		//sendEvent(new StoppedEvent("entry", num));
+	}
+
+	function checkThreads() {
+		if (!debuggerState.initializing) {
+			for (thread in debuggerState.threads) {
+				switch (thread.status) {
+    				case StoppedImmediate:
+						trace('checkThreads StoppedImmediate');
+						sendEvent(new StoppedEvent("entry", thread.id));
+
+    				case StoppedBreakpoint(number):
+						sendEvent(new StoppedEvent("breakpoint", thread.id));
+					
+    				case StoppedUncaughtException:
+						sendEvent(new StoppedEvent("exception", thread.id));
+						
+    				case StoppedCriticalError(description):
+						sendEvent(new StoppedEvent("exception", thread.id));
+
+					case Running:
+				}
+			}
 		}
 	}
 

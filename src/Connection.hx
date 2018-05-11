@@ -93,8 +93,8 @@ private class SocketInStream extends haxe.io.Input {
     }
 
     function checkWaiter() {
-        trace('checkWaiter: ${dataLength()} $waitBytesCount ${(resolveOnEnoughData != null)}');
-        if ((resolveOnEnoughData != null) && (dataLength() > waitBytesCount)) {
+        trace('checkWaiter data:${dataLength()} waitBytes:$waitBytesCount hasResolver:${(resolveOnEnoughData != null)}');
+        if ((resolveOnEnoughData != null) && (dataLength() >= waitBytesCount)) {
             var resolve = resolveOnEnoughData;
             resolveOnEnoughData = null;
             waitBytesCount = 0;
@@ -156,7 +156,7 @@ class Connection extends EventEmitter<Connection> {
         input.waitForData(8)
             .then(function(_) {
                 messageLength = calcMessageLength();
-                trace(messageLength);
+                trace('waiting message length: $messageLength');
                 return input.waitForData(messageLength);
             })
             .then(function(_) {
@@ -198,6 +198,7 @@ class Connection extends EventEmitter<Connection> {
     }
 
     public function sendCommand(command:Command):Promise<Message> {
+        trace('sendCommand: $command');
         return new Promise<Message>(function(resolve, reject){
             pendingCommands.add({command:command, callback:resolve, errorBack:reject});
             HaxeProtocol.writeCommand(output, command);
