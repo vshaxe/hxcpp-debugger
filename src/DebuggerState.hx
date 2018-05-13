@@ -26,11 +26,12 @@ class DebuggerState {
         breakpoints = new Map<String, Array<Breakpoint>>();
         workspaceToAbsPath = new Map<String, String>();
         absToWorkspace = new Map<String, String>();
+        threads = new Map<Int, ThreadState>();
         workspaceFiles = [];
         absFiles = [];
     }
 
-    public function getBreakpointsByPath(path:String, pathIsAbsolute:Bool=true) {
+    public function getBreakpointsByPath(path:String, pathIsAbsolute:Bool = true):Array<Breakpoint> {
         return breakpoints.exists(path) ? breakpoints[path] : [];
     }
 
@@ -43,7 +44,6 @@ class DebuggerState {
     }
 
     public function setThreadsStatus(list:ThreadWhereList) {
-        threads = new Map<Int, ThreadState>();
         while (true) {
             switch (list) {
                 case Where(number, status, frameList, next):
@@ -70,10 +70,9 @@ class DebuggerState {
             workspaceToAbsPath[workspaceFiles[i]] = absFiles[i];
             absToWorkspace[absFiles[i]] = workspaceFiles[i];
         }
-        trace("calcPathDictionaries done!!!");
     }
 
-    function parseFrameList(frameList:FrameList) {
+    function parseFrameList(frameList:FrameList):Array<StackFrame> {
         var result = [];
         while (true) {
             switch (frameList) {

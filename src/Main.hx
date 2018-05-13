@@ -38,7 +38,7 @@ class Main extends adapter.DebugSession {
     override function initializeRequest(response:InitializeResponse, args:InitializeRequestArguments) {
         haxe.Log.trace = traceToOutput;
 		response.body.supportsSetVariable = true;
-		//response.body.supportsConfigurationDoneRequest = true;
+		response.body.supportsConfigurationDoneRequest = true;
         sendResponse(response);
 	}
 
@@ -74,7 +74,6 @@ class Main extends adapter.DebugSession {
 						default:
 							trace('UNEXPECTED MESSAGE: $message');
 					}
-					
 				})
 				.then(function(_) {
 					sendResponse(response);
@@ -82,8 +81,7 @@ class Main extends adapter.DebugSession {
 					debuggerState.initializing = false;
 					return updateThreadStatus();
 				})
-				.then(function(_)) {
-					checkThreads();
+				.then(function(_) {
 					connection.on(Connection.INFO_MESSAGE, onInfoMessage);
 				});
 		}
@@ -100,6 +98,33 @@ class Main extends adapter.DebugSession {
 			//targetProcess.stderr.on(ReadableEvent.Data, onStderr);
 			targetProcess.on(ChildProcessEvent.Exit, onExit);
 		});
+	}
+
+	override function configurationDoneRequest(response:ConfigurationDoneResponse, args:ConfigurationDoneArguments):Void {
+		trace("configurationDoneRequest");
+		sendResponse(response);
+		connection.sendCommand(Continue(1))
+			.then(function(message:Message) {
+				trace('continue result: $message');
+			});
+	}
+
+	override function continueRequest(response:ContinueResponse, args:ContinueArguments):Void {
+		connection.sendCommand(SetCurrentThread(args.threadId))
+			.then(function(message) {
+				return connection.sendCommand(Continue(1));
+			})
+			.then(function(message:Message) {
+				switch (message) {
+					case OK:
+						sendResponse(response);
+
+					case ErrorBadCount(count):
+						
+					default:
+						trace('UNEXPECTED MESSAGE: $message');
+				}
+			});
 	}
 
 	override function setBreakPointsRequest(response:SetBreakpointsResponse, args:SetBreakpointsArguments):Void {
@@ -187,6 +212,7 @@ class Main extends adapter.DebugSession {
 				switch (message) {
 					case ThreadsWhere(list):
 						debuggerState.setThreadsStatus(list);
+
 					default:
 						'UNEXPECTED: $message';
 				}
@@ -197,33 +223,40 @@ class Main extends adapter.DebugSession {
 	function onInfoMessage(message:Message) {
 		trace('onInfoMessage: $message');
 		switch (message) {
-			case ThreadStopped(_):
-				checkThreads();
+			case ThreadStopped(number, _):
+				updateThreadStatus()
+					.then(function(_) {
+						sendThreadStatusEvent(number);
+					});
+
+			case ThreadStarted(number):
+				updateThreadStatus()
+					.then(function(_) {
+						sendThreadStatusEvent(number);
+					});
 			default:
 		}
 		//sendEvent(new StoppedEvent("entry", num));
 	}
 
-	function checkThreads() {
-		if (!debuggerState.initializing) {
-			for (thread in debuggerState.threads) {
-				switch (thread.status) {
-    				case StoppedImmediate:
-						trace('checkThreads StoppedImmediate');
-						sendEvent(new StoppedEvent("entry", thread.id));
+	function sendThreadStatusEvent(number:Int) {
+		var thread = debuggerState.threads[number];
+		switch (thread.status) {
+			case StoppedImmediate:
+				trace('checkThreads StoppedImmediate');
+				sendEvent(new StoppedEvent("entry", thread.id));
 
-    				case StoppedBreakpoint(number):
-						sendEvent(new StoppedEvent("breakpoint", thread.id));
-					
-    				case StoppedUncaughtException:
-						sendEvent(new StoppedEvent("exception", thread.id));
-						
-    				case StoppedCriticalError(description):
-						sendEvent(new StoppedEvent("exception", thread.id));
+			case StoppedBreakpoint(number):
+				sendEvent(new StoppedEvent("breakpoint", thread.id));
+			
+			case StoppedUncaughtException:
+				sendEvent(new StoppedEvent("exception", thread.id));
+				
+			case StoppedCriticalError(description):
+				sendEvent(new StoppedEvent("exception", thread.id));
 
-					case Running:
-				}
-			}
+			case Running:
+				sendEvent(new ContinuedEvent(thread.id));
 		}
 	}
 
