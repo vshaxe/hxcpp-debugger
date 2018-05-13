@@ -2,6 +2,7 @@ import debugger.IController;
 import js.Promise;
 import protocol.debug.Types;
 import adapter.DebugSession;
+import adapter.Handles;
 
 typedef ThreadState = {
     var id:Int;
@@ -10,13 +11,13 @@ typedef ThreadState = {
     var where:Array<StackFrame>;
 }
 
-
 class DebuggerState {
 
     public var workspaceToAbsPath:Map<String, String>;
     public var absToWorkspace:Map<String, String>;
     public var threads:Map<Int, ThreadState>;
     public var initializing:Bool;
+    public var handles:Handles<String>;
     
     var breakpoints:Map<String, Array<Breakpoint>>;
     var workspaceFiles:Array<String>;
