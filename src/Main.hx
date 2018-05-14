@@ -7,6 +7,7 @@ import adapter.DebugSession;
 import js.node.child_process.ChildProcess.ChildProcessEvent;
 import js.node.net.Socket;
 import js.node.stream.Readable.ReadableEvent;
+import adapter.DebugSession.Scope as ScopeImpl;
 import debugger.IController;
 
 typedef HxcppLaunchRequestArguments = {
@@ -103,7 +104,10 @@ class Main extends adapter.DebugSession {
 	override function configurationDoneRequest(response:ConfigurationDoneResponse, args:ConfigurationDoneArguments):Void {
 		trace("configurationDoneRequest");
 		sendResponse(response);
-		connection.sendCommand(Continue(1))
+		connection.sendCommand(SetCurrentThread(0))
+			.then(function(message) {
+				return connection.sendCommand(Continue(1));
+			})
 			.then(function(message:Message) {
 				trace('continue result: $message');
 			});
@@ -177,6 +181,15 @@ class Main extends adapter.DebugSession {
 		trace('scopes');
 		trace('args1: ${haxe.Json.stringify(args)}');
 
+		var scopes:Array<Scope> = [
+            new ScopeImpl("Locals", debuggerState.handles.create(LocalsScope(args.frameId)), false),
+            new ScopeImpl("Members", debuggerState.handles.create(MembersScope(args.frameId)), false)
+		];
+
+        response.body = {
+            scopes: cast scopes
+        };
+		
 		sendResponse(response);
 	}
 
@@ -256,6 +269,7 @@ class Main extends adapter.DebugSession {
 				sendEvent(new StoppedEvent("exception", thread.id));
 
 			case Running:
+				trace('CONTINUE: ${thread.id}');				
 				sendEvent(new ContinuedEvent(thread.id));
 		}
 	}

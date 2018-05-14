@@ -11,13 +11,18 @@ typedef ThreadState = {
     var where:Array<StackFrame>;
 }
 
+enum ReferenceVal {
+    LocalsScope(frameId:Int)
+    MembersScope(frameId:Int)
+}
+
 class DebuggerState {
 
     public var workspaceToAbsPath:Map<String, String>;
     public var absToWorkspace:Map<String, String>;
     public var threads:Map<Int, ThreadState>;
     public var initializing:Bool;
-    public var handles:Handles<String>;
+    public var handles:Handles<ReferenceVal>;
     
     var breakpoints:Map<String, Array<Breakpoint>>;
     var workspaceFiles:Array<String>;
@@ -30,6 +35,7 @@ class DebuggerState {
         threads = new Map<Int, ThreadState>();
         workspaceFiles = [];
         absFiles = [];
+        handles = new Handles<ReferenceVal>();
     }
 
     public function getBreakpointsByPath(path:String, pathIsAbsolute:Bool = true):Array<Breakpoint> {
