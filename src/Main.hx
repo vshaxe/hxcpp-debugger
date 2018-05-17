@@ -21,6 +21,7 @@ class Main extends adapter.DebugSession {
 
     var connection:Connection;
 	var debuggerState:DebuggerState;
+	var stdOutBuffer:String;
 
 	public function new() {
 		debuggerState = new DebuggerState();
@@ -46,6 +47,25 @@ class Main extends adapter.DebugSession {
     override function launchRequest(response:LaunchResponse, args:LaunchRequestArguments) {
 		var args:HxcppLaunchRequestArguments = cast args;
 		var program:String = args.program;
+
+		function onStdout(data) {
+			stdOutBuffer += data;
+			var ind = stdOutBuffer.lastIndexOf("\n");
+			if (ind >= 0) {
+				var send = stdOutBuffer.substr(0, ind);
+				var lines = send.split("\n");
+				for (line in lines) {
+					if (line != "") {
+						sendEvent(new OutputEvent('[trace]> $line \n', OutputEventCategory.console));
+					}
+				}
+				stdOutBuffer = stdOutBuffer.substr(ind);
+			}
+		}
+
+		function onStderr(data) {
+			trace('onStderr: $data');
+		}
 
 		function onConnected(socket:Socket) {
 			trace("Remote debug connected!");
@@ -95,26 +115,23 @@ class Main extends adapter.DebugSession {
 		server.listen(port, function() {
 			var args = [];
 			var targetProcess = ChildProcess.spawn(program, args, {stdio: Pipe});
-			//targetProcess.stdout.on(ReadableEvent.Data, onStdout);
-			//targetProcess.stderr.on(ReadableEvent.Data, onStderr);
+			targetProcess.stdout.on(ReadableEvent.Data, onStdout);
+			targetProcess.stderr.on(ReadableEvent.Data, onStderr);
 			targetProcess.on(ChildProcessEvent.Exit, onExit);
 		});
 	}
 
 	override function configurationDoneRequest(response:ConfigurationDoneResponse, args:ConfigurationDoneArguments):Void {
 		trace("configurationDoneRequest");
-		sendResponse(response);
-		connection.sendCommand(SetCurrentThread(0))
-			.then(function(message) {
-				return connection.sendCommand(Continue(1));
-			})
+		connection.sendCommand(Continue(1))
 			.then(function(message:Message) {
 				trace('continue result: $message');
+				sendResponse(response);
 			});
 	}
 
 	override function continueRequest(response:ContinueResponse, args:ContinueArguments):Void {
-		connection.sendCommand(SetCurrentThread(args.threadId))
+		maybeSetCurrentThread(args.threadId)
 			.then(function(message) {
 				return connection.sendCommand(Continue(1));
 			})
@@ -124,6 +141,7 @@ class Main extends adapter.DebugSession {
 						sendResponse(response);
 
 					case ErrorBadCount(count):
+						trace("ErrorBadCount");
 						
 					default:
 						trace('UNEXPECTED MESSAGE: $message');
@@ -136,14 +154,17 @@ class Main extends adapter.DebugSession {
 
 		var breakpoints = debuggerState.getBreakpointsByPath(args.source.path);
 		var alreadySet = [for (b in breakpoints) b.line => b];
+		var toRemove = [for (b in breakpoints) b];
 		var newBreakpoints = [];
 		response.body = {
 			breakpoints:newBreakpoints
 		};
 
 		for (bs in args.breakpoints) {
-			if (alreadySet.exists(bs.line))
+			if (alreadySet.exists(bs.line)) {
+				toRemove.remove(alreadySet[bs.line]);
 				continue;
+			}
 
 			var b = new Breakpoint(true, bs.line, bs.column, cast args.source);
 			newBreakpoints.push(b);
@@ -171,7 +192,23 @@ class Main extends adapter.DebugSession {
 				});
 		}
 
+		for (b in toRemove) {
+			var workspacePath = debuggerState.absToWorkspace[args.source.path];
+			last = connection.sendCommand(DeleteFileLineBreakpoint(workspacePath, b.line))
+				.then(function(message) {
+					switch (message) {
+						case BreakpointStatuses(_):
+							
+
+						default:
+							'UNEXPECTED:$message';
+					}
+					return Promise.resolve(message);
+				});
+		}
+
 		last.then(function(_) {
+			debuggerState.setBreakpointsByPath(args.source.path, cast newBreakpoints);
 			trace(haxe.Json.stringify(response));
 			sendResponse(response);
 		});
@@ -181,16 +218,65 @@ class Main extends adapter.DebugSession {
 		trace('scopes');
 		trace('args1: ${haxe.Json.stringify(args)}');
 
-		var scopes:Array<Scope> = [
-            new ScopeImpl("Locals", debuggerState.handles.create(LocalsScope(args.frameId)), false),
-            new ScopeImpl("Members", debuggerState.handles.create(MembersScope(args.frameId)), false)
-		];
+		var currentThreadNum:Int = debuggerState.currentThread;
+		var handles = debuggerState.threads[currentThreadNum].handles;
 
-        response.body = {
-            scopes: cast scopes
-        };
-		
-		sendResponse(response);
+		maybeSetFrame(args.frameId)
+			.then(function(_) {
+				var scopes:Array<Scope> = [
+            		new ScopeImpl("Variables", handles.create(LocalsScope(args.frameId, new Map())), false)
+				];
+
+				response.body = {
+					scopes: cast scopes
+				};
+				sendResponse(response);
+			});
+	}
+
+	override function variablesRequest(response:VariablesResponse, args:VariablesArguments):Void {
+		trace('variables');
+		trace('args1: ${haxe.Json.stringify(args)}');
+
+		var ref = debuggerState.getHandles().get(args.variablesReference);
+		var vars = new Map<String, Variable>();
+		response.body = {
+			variables:[]
+		};
+		switch (ref) {
+			case LocalsScope(frameId, variables):
+				connection.sendCommand(Variables(false))
+					.then(function(message) {
+						var names = switch (message) {
+							case debugger.Message.Variables(list):
+								list;
+							default:
+								trace('UNEXPECTED: $message');
+								[];
+						}
+						return Promise.resolve(names);
+					})
+					.then(function(varNames:Array<String>) {
+						var last = Promise.resolve(0);
+						for (varName in varNames) {
+							last = connection.sendCommand(GetStructured(false, varName))
+								.then(function(message) {
+									switch (message) {
+										case Structured(value):
+											trace('$value');
+											//response.body.variables.push(cast new Variable(expression, value));
+										default:
+											trace('UNEXPECTED: $message');
+									}
+									return Promise.resolve(0);
+								});
+						}
+						return last;
+					})
+					.then(function(_) {
+						sendResponse(response);
+					});
+		}
 	}
 
 	override function stackTraceRequest(response:StackTraceResponse, args:StackTraceArguments):Void {
@@ -215,8 +301,72 @@ class Main extends adapter.DebugSession {
 				for (t in threads) {
 					response.body.threads.push(new Thread(t.id, t.name));
 				}
+				trace('threads response');
 				sendResponse(response);
 			});
+	}
+
+	override function stepInRequest(response:StepInResponse, args:StepInArguments) {
+		trace('stepInRequest: ${haxe.Json.stringify(args)}');
+		maybeSetCurrentThread(args.threadId)
+			.then(function(_) {
+				return connection.sendCommand(Step(1));
+			})
+			.then(function(message) {
+				sendResponse(response);
+			});
+	}
+
+	override function nextRequest(response:NextResponse, args:NextArguments) {
+		trace('stepOutRequest: ${haxe.Json.stringify(args)}');
+		maybeSetCurrentThread(args.threadId)
+			.then(function(_) {
+				return connection.sendCommand(Next(1));
+			})
+			.then(function(message) {
+				sendResponse(response);
+			});
+	}
+
+	override function stepOutRequest(response:StepOutResponse, args:StepOutArguments) {
+		trace('stepOutRequest: ${haxe.Json.stringify(args)}');
+		maybeSetCurrentThread(args.threadId)
+			.then(function(_) {
+				return connection.sendCommand(Finish(1));
+			})
+			.then(function(message) {
+				sendResponse(response);
+			});
+	}
+
+	function maybeSetFrame(id):Promise<Int> {
+		var thread = debuggerState.threads[debuggerState.currentThread];
+		return 
+			if (thread.currentFrame != id) {
+				connection.sendCommand(SetFrame(id))
+					.then(function(message){
+						thread.currentFrame = id;
+						return Promise.resolve(id);
+					});
+			}
+			else {
+				Promise.resolve(id);
+			}
+	}
+
+	function maybeSetCurrentThread(id):Promise<Int> {
+		return 
+			if (debuggerState.currentThread != id) {
+				connection.sendCommand(SetCurrentThread(id))
+					.then(function(message){
+						debuggerState.currentThread = id;
+						return Promise.resolve(id);
+					});
+			}
+			else {
+				Promise.resolve(id);
+			}
+		
 	}
 
 	function updateThreadStatus():Promise<Int> {
@@ -243,10 +393,13 @@ class Main extends adapter.DebugSession {
 					});
 
 			case ThreadStarted(number):
-				updateThreadStatus()
-					.then(function(_) {
-						sendThreadStatusEvent(number);
-					});
+				debuggerState.setThreadRunning(number);
+				sendThreadStatusEvent(number);
+
+			case ThreadCreated(number):
+				debuggerState.createThread(number);
+				//sendThreadStatusEvent(number);
+				
 			default:
 		}
 		//sendEvent(new StoppedEvent("entry", num));
@@ -270,7 +423,8 @@ class Main extends adapter.DebugSession {
 
 			case Running:
 				trace('CONTINUE: ${thread.id}');				
-				sendEvent(new ContinuedEvent(thread.id));
+				//sendEvent(new ContinuedEvent(thread.id));
+				trace("AFTER");
 		}
 	}
 

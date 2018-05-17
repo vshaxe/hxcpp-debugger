@@ -9,11 +9,13 @@ typedef ThreadState = {
     var name:String;
     var status:ThreadStatus;
     var where:Array<StackFrame>;
+    var handles:Handles<ReferenceVal>;
+    var currentFrame:Int;
 }
 
 enum ReferenceVal {
-    LocalsScope(frameId:Int)
-    MembersScope(frameId:Int)
+    LocalsScope(frameId:Int, variables:Map<String, Variable>);
+    //MembersScope(frameId:Int, variables:Map<String, Variable>);
 }
 
 class DebuggerState {
@@ -22,7 +24,7 @@ class DebuggerState {
     public var absToWorkspace:Map<String, String>;
     public var threads:Map<Int, ThreadState>;
     public var initializing:Bool;
-    public var handles:Handles<ReferenceVal>;
+    public var currentThread:Int = 0;
     
     var breakpoints:Map<String, Array<Breakpoint>>;
     var workspaceFiles:Array<String>;
@@ -35,11 +37,14 @@ class DebuggerState {
         threads = new Map<Int, ThreadState>();
         workspaceFiles = [];
         absFiles = [];
-        handles = new Handles<ReferenceVal>();
     }
 
     public function getBreakpointsByPath(path:String, pathIsAbsolute:Bool = true):Array<Breakpoint> {
         return breakpoints.exists(path) ? breakpoints[path] : [];
+    }
+
+    public function setBreakpointsByPath(path:String, v:Array<Breakpoint>) {
+        breakpoints[path] = v;
     }
 
     public function setWorkspaceFiles(files:Array<String>) {
@@ -54,13 +59,11 @@ class DebuggerState {
         while (true) {
             switch (list) {
                 case Where(number, status, frameList, next):
-                    threads[number] = {
-                        id:number,
-                        name:'Thread$number',
-                        status:status,
-                        where:parseFrameList(frameList)
-                    };
+                    var thread = getOrCreateThread(number);
+                    thread.status = status;
+                    thread.where = parseFrameList(frameList);
                     list = next;
+                
 
                 case Terminator:
                     break;
@@ -68,8 +71,30 @@ class DebuggerState {
         }
     }
 
-    public function updateThreadStatus(id:Int, message:Message) {
+    public function createThread(id:Int) {
+        var status = ThreadStatus.Running;
         
+        threads[id] = {
+            id:id,
+            name:'Thread$id',
+            status:status,
+            where:[],
+            handles:new Handles<ReferenceVal>(),
+            currentFrame:-1
+        };
+        trace(threads[id]);
+
+        return threads[id];
+    }
+
+    public function getOrCreateThread(id:Int) {
+        return (threads.exists(id)) ? threads[id] : createThread(id);
+    }
+
+    public function setThreadRunning(id:Int) {
+        var thread = getOrCreateThread(id);
+        thread.status = Running;
+        thread.handles.reset();
     }
 
     public function calcPathDictionaries() {
@@ -77,6 +102,14 @@ class DebuggerState {
             workspaceToAbsPath[workspaceFiles[i]] = absFiles[i];
             absToWorkspace[absFiles[i]] = workspaceFiles[i];
         }
+    }
+
+    public function getCurrentThread():ThreadState {
+        return threads[currentThread];
+    }
+
+    public function getHandles():Handles<ReferenceVal> {
+        return getCurrentThread().handles;
     }
 
     function parseFrameList(frameList:FrameList):Array<StackFrame> {

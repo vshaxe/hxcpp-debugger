@@ -152,6 +152,7 @@ class Connection extends EventEmitter<Connection> {
     }
 
     function waitOutputLoop() {
+        trace("waitOutputLoop");
         var messageLength = 0;
         input.waitForData(8)
             .then(function(_) {
@@ -169,8 +170,9 @@ class Connection extends EventEmitter<Connection> {
                 catch (e : Dynamic) {
                     throw "Expected Message, but got " + raw + ": " + e;
                 }
-            })
-            .then(function(_) haxe.Timer.delay(waitOutputLoop, 0));
+                trace("!!!");
+                haxe.Timer.delay(waitOutputLoop, 0);
+            });
     }
 
     function onMessage(message:Message) {
