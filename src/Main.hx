@@ -48,7 +48,7 @@ class Main extends adapter.DebugSession {
 		var args:HxcppLaunchRequestArguments = cast args;
 		var program:String = args.program;
 
-		function onStdout(data) {
+		function onStdout(data):Void {
 			stdOutBuffer += data;
 			var ind = stdOutBuffer.lastIndexOf("\n");
 			if (ind >= 0) {
@@ -95,15 +95,9 @@ class Main extends adapter.DebugSession {
 						default:
 							trace('UNEXPECTED MESSAGE: $message');
 					}
-				})
-				.then(function(_) {
 					sendResponse(response);
 					sendEvent(new adapter.DebugSession.InitializedEvent());
 					debuggerState.initializing = false;
-					return updateThreadStatus();
-				})
-				.then(function(_) {
-					connection.on(Connection.INFO_MESSAGE, onInfoMessage);
 				});
 		}
 
@@ -123,6 +117,7 @@ class Main extends adapter.DebugSession {
 
 	override function configurationDoneRequest(response:ConfigurationDoneResponse, args:ConfigurationDoneArguments):Void {
 		trace("configurationDoneRequest");
+		connection.on(Connection.INFO_MESSAGE, onInfoMessage);
 		connection.sendCommand(Continue(1))
 			.then(function(message:Message) {
 				trace('continue result: $message');
@@ -156,17 +151,20 @@ class Main extends adapter.DebugSession {
 		var alreadySet = [for (b in breakpoints) b.line => b];
 		var toRemove = [for (b in breakpoints) b];
 		var newBreakpoints = [];
+		var result = [];
 		response.body = {
-			breakpoints:newBreakpoints
+			breakpoints:result
 		};
 
 		for (bs in args.breakpoints) {
 			if (alreadySet.exists(bs.line)) {
 				toRemove.remove(alreadySet[bs.line]);
+				result.push(alreadySet[bs.line]);
 				continue;
 			}
 
 			var b = new Breakpoint(true, bs.line, bs.column, cast args.source);
+			result.push(b);
 			newBreakpoints.push(b);
 		}
 
@@ -208,7 +206,7 @@ class Main extends adapter.DebugSession {
 		}
 
 		last.then(function(_) {
-			debuggerState.setBreakpointsByPath(args.source.path, cast newBreakpoints);
+			debuggerState.setBreakpointsByPath(args.source.path, cast result);
 			trace(haxe.Json.stringify(response));
 			sendResponse(response);
 		});
@@ -237,7 +235,7 @@ class Main extends adapter.DebugSession {
 	override function variablesRequest(response:VariablesResponse, args:VariablesArguments):Void {
 		trace('variables');
 		trace('args1: ${haxe.Json.stringify(args)}');
-
+	
 		var ref = debuggerState.getHandles().get(args.variablesReference);
 		var vars = new Map<String, Variable>();
 		response.body = {
@@ -259,7 +257,7 @@ class Main extends adapter.DebugSession {
 					.then(function(varNames:Array<String>) {
 						var last = Promise.resolve(0);
 						for (varName in varNames) {
-							last = connection.sendCommand(GetStructured(false, varName))
+							last = connection.sendCommand(GetStructuredElided(false, varName))
 								.then(function(message) {
 									switch (message) {
 										case Structured(value):
