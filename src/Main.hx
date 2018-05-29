@@ -216,13 +216,10 @@ class Main extends adapter.DebugSession {
 		trace('scopes');
 		trace('args1: ${haxe.Json.stringify(args)}');
 
-		var currentThreadNum:Int = debuggerState.currentThread;
-		var handles = debuggerState.threads[currentThreadNum].handles;
-
 		maybeSetFrame(args.frameId)
-			.then(function(_) {
+			.then(function(frame:StoppedFrame) {
 				var scopes:Array<Scope> = [
-            		new ScopeImpl("Variables", handles.create(LocalsScope(args.frameId, new Map())), false)
+            		new ScopeImpl("Variables", frame.handles.create(LocalsScope(args.frameId, new Map())), false)
 				];
 
 				response.body = {
@@ -235,16 +232,19 @@ class Main extends adapter.DebugSession {
 	override function variablesRequest(response:VariablesResponse, args:VariablesArguments):Void {
 		trace('variables');
 		trace('args1: ${haxe.Json.stringify(args)}');
-	
-		var ref = debuggerState.getHandles().get(args.variablesReference);
-		var vars = new Map<String, Variable>();
+		
+		
 		response.body = {
 			variables:[]
 		};
+
+		var frame = debuggerState.getCurrentThread().currentFrame;
+		var ref = frame.handles.get(args.variablesReference);
 		switch (ref) {
 			case LocalsScope(frameId, variables):
 				connection.sendCommand(Variables(false))
 					.then(function(message) {
+						trace(message);
 						var names = switch (message) {
 							case debugger.Message.Variables(list):
 								list;
@@ -257,12 +257,11 @@ class Main extends adapter.DebugSession {
 					.then(function(varNames:Array<String>) {
 						var last = Promise.resolve(0);
 						for (varName in varNames) {
-							last = connection.sendCommand(GetStructuredElided(false, varName))
+							last = connection.sendCommand(GetStructuredNoDeep(false, varName))
 								.then(function(message) {
 									switch (message) {
 										case Structured(value):
-											trace('$value');
-											//response.body.variables.push(cast new Variable(expression, value));
+											response.body.variables.push(frame.getVariable(varName, value));
 										default:
 											trace('UNEXPECTED: $message');
 									}
@@ -274,6 +273,33 @@ class Main extends adapter.DebugSession {
 					.then(function(_) {
 						sendResponse(response);
 					});
+			case StructuredVariable(reference, null):
+				
+				var varName = reference;
+				var lastIndex = reference.lastIndexOf(".");
+				if (lastIndex >= 0) {
+					varName = reference.substr(lastIndex);
+				}
+
+				connection.sendCommand(GetStructuredNoDeep(false, reference))
+					.then(function(message) {
+						switch (message) {
+							case Structured(value):
+								response.body.variables = frame.parseList(value);//.push(variableParser.getVariable(varName, value));
+							default:
+								trace('UNEXPECTED: $message');
+						}
+						return Promise.resolve(0);
+					})
+					.then(function(_) {
+						sendResponse(response);
+					});
+
+			case StructuredVariable(reference, inner):
+				for (innerVar in inner) {
+					response.body.variables.push(frame.getVariable(innerVar.name, innerVar.value));
+				}
+				sendResponse(response);
 		}
 	}
 
@@ -285,6 +311,8 @@ class Main extends adapter.DebugSession {
 			totalFrames:threadStatus.where.length,
 			stackFrames:cast threadStatus.where
 		};
+
+		trace('stackTraceRequest: ${haxe.Json.stringify(response.body)}');
 		sendResponse(response);
 	}
 
@@ -337,18 +365,21 @@ class Main extends adapter.DebugSession {
 			});
 	}
 
-	function maybeSetFrame(id):Promise<Int> {
+	function maybeSetFrame(id):Promise<StoppedFrame> {
 		var thread = debuggerState.threads[debuggerState.currentThread];
+		if (thread.currentFrame == null) {
+			thread.currentFrame = new StoppedFrame(id);
+		}
 		return 
-			if (thread.currentFrame != id) {
+			if (thread.currentFrame.id != id) {
 				connection.sendCommand(SetFrame(id))
 					.then(function(message){
-						thread.currentFrame = id;
-						return Promise.resolve(id);
+						thread.currentFrame = new StoppedFrame(id);
+						return Promise.resolve(thread.currentFrame);
 					});
 			}
 			else {
-				Promise.resolve(id);
+				Promise.resolve(thread.currentFrame);
 			}
 	}
 
@@ -392,7 +423,7 @@ class Main extends adapter.DebugSession {
 
 			case ThreadStarted(number):
 				debuggerState.setThreadRunning(number);
-				sendThreadStatusEvent(number);
+				//sendThreadStatusEvent(number);
 
 			case ThreadCreated(number):
 				debuggerState.createThread(number);
@@ -420,11 +451,9 @@ class Main extends adapter.DebugSession {
 				sendEvent(new StoppedEvent("exception", thread.id));
 
 			case Running:
-				trace('CONTINUE: ${thread.id}');				
-				//sendEvent(new ContinuedEvent(thread.id));
-				trace("AFTER");
 		}
 	}
+
 
     static function main() {
         adapter.DebugSession.run(Main);
