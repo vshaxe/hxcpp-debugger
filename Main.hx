@@ -125,11 +125,12 @@ class Main extends adapter.DebugSession {
 					name:vi.name,
 					value:vi.value,
 					type:vi.type,
+					kind:vi.type,
 					variablesReference:vi.variablesReference
 				};
 				if (vi.indexedVariables != null) variable.indexedVariables = vi.indexedVariables;
 				if (vi.namedVariables != null) variable.namedVariables = vi.namedVariables;
-				
+				trace(haxe.Json.stringify(variable));
 				vars.push(variable);
 
 			}

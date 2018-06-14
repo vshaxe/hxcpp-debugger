@@ -57,11 +57,24 @@ class VariablesPrinter {
                     });
                 }
             
-            case IntIndexed(val, length):
+            case IntIndexed(val, length) if (getType(val) == "Array"):
                 if (count < 0) count = length;
                 trace('start: $start, count:$count, end: ${start + count}');
                 for (i in start...start + count) {
                     var value = val[i];
+                    result.push({
+                        name:'$i',
+                        value:resolveValue(value),
+                        type: getType(value)
+                    });
+                }
+                trace(result);
+
+             case IntIndexed(val, length):
+                if (count < 0) count = length;
+                trace('start: $start, count:$count, end: ${start + count}');
+                for (i in start...start + count) {
+                    var value = val.get(i);
                     result.push({
                         name:'$i',
                         value:resolveValue(value),
@@ -91,6 +104,11 @@ class VariablesPrinter {
             case TClass(Array):
                 var arr:Array<Dynamic> = cast value;
                 IntIndexed(value, arr.length);
+
+            case TClass(haxe.ds.IntMap):
+                var map:haxe.ds.IntMap<Dynamic> = cast value;
+                var keys = [for (k in map.keys()) '$k'];
+                IntIndexed(value, keys.length);
 
             case TClass(c):
                 StringIndexed(value, getClassProps(c));
