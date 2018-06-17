@@ -37,7 +37,8 @@
 		"mocha": "^2.4.5"
 	},
 	"scripts": {
-		"vscode:prepublish": "haxe build.hxml"
+		"vscode:prepublish": "haxe build.hxml",
+		"postinstall": "haxelib dev hxcpp-debug-jsonrpc ./server"
 	},
 	"contributes": {
 		"debuggers": [
