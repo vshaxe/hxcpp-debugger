@@ -23,10 +23,10 @@
 	],
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/vshaxe/flash-debugger.git"
+		"url": "https://github.com/vshaxe/hxcpp-debugger.git"
 	},
 	"bugs": {
-		"url": "https://github.com/vshaxe/flash-debugger/issues"
+		"url": "https://github.com/vshaxe/hxcpp-debugger/issues"
 	},
 	"dependencies": {
 		"vscode-debugprotocol": "1.8.0-pre.3",
@@ -59,8 +59,8 @@
 						"properties": {
 							"program": {
 								"type": "string",
-								"description": "full path to a swf file.",
-								"default": "${workspaceRoot}/bin/your.swf"
+								"description": "full path to executable.",
+								"default": "${workspaceRoot}/bin/yourExecutable.exe"
 							},
 							"receiveAdapterOutput": {
 								"type": "bool",
@@ -89,7 +89,7 @@
 						"name": "Hxcpp",
 						"type": "hxcpp",
 						"request": "launch",
-						"program": "${workspaceRoot}/bin/your.swf"
+						"program": "${workspaceRoot}/bin/yourExecutable.exe"
 					}
 				]
 			}
