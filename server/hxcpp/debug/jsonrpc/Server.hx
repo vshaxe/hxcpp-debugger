@@ -16,28 +16,23 @@ import hxcpp.debug.jsonrpc.Protocol;
     var locals = "Locals";
 }
 
-enum Reference {
-    Scope(scopeId:ScopeId, vars:Map<String, Dynamic>);
-    Var(value:Value);
-}
-
 private class References {
     var lastId:Int;
-    var references:Map<Int, Reference>;
+    var references:Map<Int, Value>;
 
     public function new() { 
         lastId = 1000;
-        references = new Map<Int, Reference>();
+        references = new Map<Int, Value>();
     }
 
-    public function create(ref:Reference):Int {
+    public function create(ref:Value):Int {
         var id = lastId;
         references[lastId] = ref;
         lastId++;
         return id;
     }
 
-    public function get(id:Int):Reference {
+    public function get(id:Int):Value {
         return references[id];
     }
 }
@@ -50,6 +45,7 @@ class Server {
     var stateMutex:Mutex;
     var currentThreadInfo:cpp.vm.ThreadInfo;
     var scopes:Map<ScopeId, Array<String>>;
+    var breakpoints:Map<String, Array<Int>>;
     var references:References;
     var started:Bool;
 
@@ -60,6 +56,7 @@ class Server {
         this.port = port;
         stateMutex = new Mutex();
         scopes = new Map<ScopeId, Array<String>>();
+        breakpoints = new Map<String, Array<Int>>();
         references = new References();
         
         connect();
@@ -118,11 +115,16 @@ class Server {
                     case Protocol.SetBreakpoints:
                         var params:SetBreakpointsParams = m.params;
                         var result = [];
+                        if (!breakpoints.exists(params.file)) breakpoints[params.file] = [];
                         trace('Protocol.SetBreakpoints: $params');
+                        for (rm in breakpoints[params.file]) {
+                            Debugger.deleteBreakpoint(rm);
+                        }
                         for (b in params.breakpoints) {
                             var id = Debugger.addFileLineBreakpoint(path2file[params.file], b.line);
                             result.push(id);
                         }
+                        breakpoints[params.file] = result;
                         m.result = result;
                         sendResponse(m);
 
@@ -137,37 +139,28 @@ class Server {
 
                     case Protocol.GetScopes:
                         references = new References();
-                        function getProp(value:Dynamic, propName:String) {
-                            return Reflect.getProperty(value, propName);
-                        }
 
                         var threadId = 0; //TODO: map it to frameId?
                         var frameId = m.params.frameId;
                         m.result = [];
+
                         var stackVariables:Array<String> = Debugger.getStackVariables(threadId, frameId, false);
-                        var localsInner = null;
+                        var localsId = 0;
+                        var localsNames:Array<String> = [];
+                        var localsVals:Array<Dynamic> = [];
                         for (varName in stackVariables) {
                             if (varName == "this") {
                                 var inner = new Map<String, Dynamic>();
-                                var id = references.create(Scope(ScopeId.members, inner));
-                                m.result.push({id:id, name:ScopeId.members});
-
                                 var value:Dynamic = Debugger.getStackVariableValue(threadId, frameId, "this", false);
-                                var valueType = Type.getClass(value);
-                                for (m in Type.getInstanceFields(valueType)) {
-                                    inner[m] = getProp(value, m);
-                                } 
-                                for (s in Type.getClassFields(valueType)) {
-                                    inner[s] = getProp(value, s);
-                                }
+                                var id = references.create(VariablesPrinter.resolveValue(value));
+                                m.result.push({id:id, name:ScopeId.members});
                             } else {
-                                if (localsInner == null) {
-                                    localsInner = new Map<String, Dynamic>();
-                                    var id = references.create(Scope(ScopeId.locals, localsInner));
-                                    m.result.push({id:id, name:ScopeId.locals});
+                                if (localsId == 0) {
+                                    localsId = references.create(NameValueList(localsNames, localsVals));
+                                    m.result.push({id:localsId, name:ScopeId.locals});
                                 }
-                                var value:Dynamic = Debugger.getStackVariableValue(threadId, frameId, varName, false);
-                                localsInner[varName] = value;
+                                localsNames.push(varName);
+                                localsVals.push(Debugger.getStackVariableValue(threadId, frameId, varName, false));
                             }
                         }
                         sendResponse(m);
@@ -175,65 +168,43 @@ class Server {
                     case Protocol.GetVariables:
                         m.result = [];
                         var refId = m.params.variablesReference;
-                        var ref:Reference = references.get(refId);
-                        switch (ref) {
-                            case Scope(scopeId, inner):
-                                var vars = VariablesPrinter.printVariables(inner);
-                                trace(vars);
-                                for (v in vars) {
-                                    var varInfo:VarInfo = {
-                                        name:v.name,
-                                        type:v.type,
-                                        value:"",
-                                        variablesReference:0,
-                                    }
-                                    switch (v.value) {
-                                        case IntIndexed(value, length):
-                                            var refId = references.create(Var(v.value));
-                                            varInfo.variablesReference = refId;
-                                            varInfo.indexedVariables = length;
+                        var value:Value = references.get(refId);
+                        var vars = VariablesPrinter.getInnerVariables(value, m.params.start, m.params.count);
+                        //trace(vars);
+                        for (v in vars) {
+                            var varInfo:VarInfo = {
+                                name:v.name,
+                                type:v.type,
+                                value:"",
+                                variablesReference:0,
+                            }
+                            switch (v.value) {
+                                case NameValueList(names, values):
+                                    throw "impossible";
 
-                                        case StringIndexed(value, names):
-                                            var refId = references.create(Var(v.value));
-                                            varInfo.variablesReference = refId;
-                                            varInfo.namedVariables = names.length;
+                                case IntIndexed(value, length):
+                                    var refId = references.create(v.value);
+                                    varInfo.variablesReference = refId;
+                                    varInfo.indexedVariables = length;
 
-                                        case Single(value):
-                                            varInfo.value = value;
-                                    }
-                                    m.result.push(varInfo);
-                                }
+                                case StringIndexed(value, names):
+                                    var refId = references.create(v.value);
+                                    varInfo.variablesReference = refId;
+                                    varInfo.namedVariables = names.length;
 
-                            case Var(value):
-                                var vars = VariablesPrinter.getInnerVariables(value, m.params.start, m.params.count);
-                                //trace(vars);
-                                for (v in vars) {
-                                    var varInfo:VarInfo = {
-                                        name:v.name,
-                                        type:v.type,
-                                        value:"",
-                                        variablesReference:0,
-                                    }
-                                    switch (v.value) {
-                                        case IntIndexed(value, length):
-                                            var refId = references.create(Var(v.value));
-                                            varInfo.variablesReference = refId;
-                                            varInfo.indexedVariables = length;
-
-                                        case StringIndexed(value, names):
-                                            var refId = references.create(Var(v.value));
-                                            varInfo.variablesReference = refId;
-                                            varInfo.namedVariables = names.length;
-
-                                        case Single(value):
-                                            varInfo.value = value;
-                                    }
-                                    m.result.push(varInfo);
-                                }
-                               
+                                case Single(value):
+                                    varInfo.value = value;
+                            }
+                            m.result.push(varInfo);
                         }
                         sendResponse(m);
 
+                    case Protocol.Evaluate:
+                        var expr = m.params.expr;
+                        var threadId = 0; //TODO
+                        var frameId = m.params.frameId;
+                        m.result = VariablesPrinter.evaluate(expr, threadId, frameId);
+                        sendResponse(m);
 
                     case Protocol.StackTrace:
                         var threadInfo = Debugger.getThreadInfo(m.params.threadId, false);
@@ -254,6 +225,14 @@ class Server {
 
                     case Protocol.Next:
                         Debugger.stepThread(0, Debugger.STEP_OVER, 1);
+                        sendResponse(m);
+
+                    case Protocol.StepIn:
+                        Debugger.stepThread(0, Debugger.STEP_INTO, 1);
+                        sendResponse(m);
+
+                    case Protocol.StepOut:
+                        Debugger.stepThread(0, Debugger.STEP_OUT, 1);
                         sendResponse(m);
 
                 }

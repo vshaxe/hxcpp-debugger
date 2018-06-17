@@ -41,7 +41,7 @@ class Protocol {
 
 	static inline var BreakpointStop = new NotificationMethod<{threadId:Int}>("breakpointStop");
 	static inline var ExceptionStop = new NotificationMethod<{text:String}>("exceptionStop");
-	static inline var Evaluate = new RequestMethod<{expr:String},VarInfo>("evaluate");
+	static inline var Evaluate = new RequestMethod<{expr:String, frameId:Int},VarInfo>("evaluate");
 	static inline var SetExceptionOptions = new RequestMethod<Array<String>,Void>("setExceptionOptions");
 }
 

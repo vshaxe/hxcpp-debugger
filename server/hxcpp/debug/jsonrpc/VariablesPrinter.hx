@@ -16,6 +16,7 @@ enum Value {
     Single(val:Dynamic);
     IntIndexed(val:Dynamic, length:Int);
     StringIndexed(val:Dynamic, names:Array<String>);
+    NameValueList(names:Array<String>, values:Array<Dynamic>);
 }
 
 typedef Variable = {
@@ -26,30 +27,28 @@ typedef Variable = {
 
 class VariablesPrinter {
 
-    public static function printVariables(nameVal:Map<String, Dynamic>):Array<Variable> {
-        var result = [];
-        for (name in nameVal.keys()) {
-            var value = nameVal[name];
-            if(value == null) continue;
-
-            var type:String = getType(value);
-            result.push({
-                name:name,
-                value:resolveValue(value),
-                type:type
-            });
-        }
-        return result;
-    }
-
     public static function getInnerVariables(value:Value, start:Int=0, count:Int=-1):Array<Variable> {
         var result = [];
         switch (value) {
+            case NameValueList(names, values):
+                if (count < 0) count = names.length - start;
+                for (i in start...start + count) {
+                    var name = names[i];
+                    var value = values[i];
+                    if (value == null) continue;
+                    result.push({
+                        name:name,
+                        value:resolveValue(value),
+                        type:getType(value)
+                    });
+                }
+
             case StringIndexed(val, names):
                 if (count < 0) count = names.length;
                 var filteredNames = names.slice(start, start + count);
                 for (n in filteredNames) {
                     var value = Reflect.getProperty(val, n);
+                    if (value == null) value = Reflect.field(val, n);
                     result.push({
                         name:n,
                         value:resolveValue(value),
@@ -89,7 +88,7 @@ class VariablesPrinter {
         return result;
     }
 
-    static function resolveValue(value:Dynamic):Value {
+    public static function resolveValue(value:Dynamic):Value {
         return switch (Type.typeof(value)) {
             case TNull, TUnknown, TInt, TFloat, TBool, TFunction, TClass(String):
                 Single(value);
@@ -111,13 +110,57 @@ class VariablesPrinter {
                 IntIndexed(value, keys.length);
 
             case TClass(c):
-                StringIndexed(value, getClassProps(c));
+                var all = getClassProps(c);
+                
+                StringIndexed(value, [for (f in all) 
+                    if (!Reflect.isFunction(Reflect.getProperty(value, f))) 
+                        f]);
         }
     }
 
+     public static function evaluate(expression:String, threadId:Int, frameId:Int):Null<Variable> {
+        var result = null;
+        var fields = expression.split(".");
+        var root:Dynamic = null;
+        var current = null;
+        for (f in fields) {
+            if (f.indexOf("[") >= 0) {
+                break; //TODO
+            }
+            else {
+                if (root == null) {
+                    root = cpp.vm.Debugger.getStackVariableValue(threadId, frameId, f, false);
+                    current = root;
+                }
+                else {
+                    current = Reflect.getProperty(current, f);
+                }
+                if (current == null)
+                    break; //can't evaluate
+
+                result = {
+                    name:expression,
+                    value:VariablesPrinter.resolveValue(current),
+                    type: VariablesPrinter.getType(current)
+                }
+            }
+        }
+        return result;
+    }
+
     static function getClassProps(c:Class<Dynamic>) {
+        var fields = [];
+        try {
+            var flds = Type.getInstanceFields(c);
+            for (f in flds) {
+                fields.push(f);
+            }
+        }
+        catch(e:Dynamic) {
+            trace('error:$e');
+        }
         //TODO: statics
-        return Type.getInstanceFields(c);
+        return fields;
     }
 
     public static function getType(value:Dynamic):String {

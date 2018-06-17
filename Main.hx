@@ -228,7 +228,7 @@ class Main extends adapter.DebugSession {
 	}
 
 	override function evaluateRequest(response:EvaluateResponse, args:EvaluateArguments) {
-		connection.sendCommand(Protocol.Evaluate, {expr:args.expression}, function(error, result) {
+		connection.sendCommand(Protocol.Evaluate, {expr:args.expression, frameId:args.frameId}, function(error, result) {
 			if (error != null) {
 				response.message = error.message;
 				response.success = false;

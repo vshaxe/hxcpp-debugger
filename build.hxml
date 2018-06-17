@@ -1,4 +1,5 @@
 -cp .
+-cp server
 -main Main
 -lib vscode-debugadapter
 -lib hxnodejs
