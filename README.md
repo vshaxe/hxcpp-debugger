@@ -1,6 +1,15 @@
+# Howto use
+after install `hxcpp-debug-jsonrpc` library is available. And can be using with your project.
+
+for eg:
 build.hxml:
 ```
 -lib hxcpp-debug-jsonrpc
+```
+
+openfl project.xml:
+```
+<haxelib name="hxcpp-debug-jsonrpc" if="debug" />
 ```
 
 Main.hx
