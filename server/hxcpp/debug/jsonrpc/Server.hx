@@ -147,15 +147,11 @@ class Server {
                         m.result = [];
 
                         stateMutex.acquire();
-                        trace('Protocol.GetScopes: $currentThreadInfo');
                         if (currentThreadInfo != null) {
                             var threadId:Int = currentThreadInfo.number;
                             var frameId:Int = m.params.frameId;
 
-                            trace('FrameId: $frameId, threadId: $threadId');
-
                             var stackVariables:Array<String> = Debugger.getStackVariables(threadId, frameId, false);
-                            trace(stackVariables);
                             var localsId = 0;
                             var localsNames:Array<String> = [];
                             var localsVals:Array<Dynamic> = [];
