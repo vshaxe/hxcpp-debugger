@@ -87,10 +87,11 @@ class Connection {
 		trace('Sending command: $cmd');
 		var body = Buffer.from(cmd, "utf-8");
 		var header = Buffer.alloc(2);
+		if (callback != null)
+			callbacks[requestId] = callback;
+
 		header.writeUInt16LE(body.length, 0);
 		socket.write(header);
 		socket.write(body);
-		if (callback != null)
-			callbacks[requestId] = callback;
 	}
 }

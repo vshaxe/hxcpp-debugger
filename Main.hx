@@ -28,6 +28,7 @@ class Main extends adapter.DebugSession {
 		haxe.Log.trace = traceToOutput;
 		sendEvent(new adapter.DebugSession.InitializedEvent());
 		response.body.supportsSetVariable = true;
+		response.body.supportsConfigurationDoneRequest = true;
 		sendResponse(response);
 		postLaunchActions = [];
 	}
@@ -50,14 +51,13 @@ class Main extends adapter.DebugSession {
 		var executable = args.program;
 
 		function onConnected(socket) {
-			trace("Haxe connected!");
+			trace("Debug server connected!");
 			connection = new Connection(socket);
-			connection.onEvent = onEvent;
-
 			socket.on(SocketEvent.Error, function (error) trace('Socket error: $error'));
 
 			executePostLaunchActions(function() {
 				continueRequest(cast response, {threadId:0});
+				connection.onEvent = onEvent;
 			});
 		}
 
@@ -76,6 +76,10 @@ class Main extends adapter.DebugSession {
 		});
 	}
 
+	override function configurationDoneRequest(response:ConfigurationDoneResponse, args:ConfigurationDoneArguments) {
+		sendResponse(response);
+	}
+
 	function onStdout(data:Buffer) {
 		sendEvent(new adapter.DebugSession.OutputEvent(data.toString("utf-8"), stdout));
 	}
@@ -88,13 +92,25 @@ class Main extends adapter.DebugSession {
 
 	function onEvent<P>(type:NotificationMethod<P>, data:P) {
 		switch (type) {
+			case Protocol.PauseStop:
+				sendEvent(new adapter.DebugSession.StoppedEvent("pause", data.threadId));
+
 			case Protocol.BreakpointStop:
 				//stopContext = new StopContext(connection);
 				sendEvent(new adapter.DebugSession.StoppedEvent("breakpoint", data.threadId));
+
 			case Protocol.ExceptionStop:
 				//stopContext = new StopContext(connection);
 				var evt = new adapter.DebugSession.StoppedEvent("exception", 0);
 				evt.body.text = data.text;
+				sendEvent(evt);
+
+			case Protocol.ThreadStart:
+				var evt = new adapter.DebugSession.ThreadEvent(ThreadEventReason.started, data.threadId);
+				sendEvent(evt);
+
+			case Protocol.ThreadExit:
+				var evt = new adapter.DebugSession.ThreadEvent(ThreadEventReason.exited, data.threadId);
 				sendEvent(evt);
 		}
 	}
@@ -162,7 +178,6 @@ class Main extends adapter.DebugSession {
 		});
 	}
 
-
 	override function nextRequest(response:NextResponse, args:NextArguments) {
 		connection.sendCommand(Protocol.Next, {}, function(_,_) {
 			sendResponse(response);
@@ -196,6 +211,11 @@ class Main extends adapter.DebugSession {
 			response.body = {threads:result};
 			sendResponse(response);
 		});
+	}
+
+	override function pauseRequest(response:PauseResponse, args:PauseArguments) {
+		connection.sendCommand(Protocol.Pause, {});
+		sendResponse(response);
 	}
 
 	override function continueRequest(response:ContinueResponse, args:ContinueArguments) {
@@ -246,8 +266,9 @@ class Main extends adapter.DebugSession {
 
 	override function setExceptionBreakPointsRequest(response:SetExceptionBreakpointsResponse, args:SetExceptionBreakpointsArguments) {
 		// TODO: this should finish before the debugger runs, else the settings are missed
-		connection.sendCommand(Protocol.SetExceptionOptions, args.filters, function(error, result) {
-		});
+		//connection.sendCommand(Protocol.SetExceptionOptions, args.filters, function(error, result) {
+		//	sendResponse(response);
+		//});
 	}
 
 	static function main() {

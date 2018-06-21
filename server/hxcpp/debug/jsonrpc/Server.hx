@@ -43,8 +43,10 @@ class Server {
     var port:Int;
     var socket:sys.net.Socket;
     var stateMutex:Mutex;
+    var socketMutex:Mutex;
     var currentThreadInfo:cpp.vm.ThreadInfo;
     var scopes:Map<ScopeId, Array<String>>;
+    var threads:Map<Int, String>;
     var breakpoints:Map<String, Array<Int>>;
     var references:References;
     var started:Bool;
@@ -55,9 +57,11 @@ class Server {
         this.host = host;
         this.port = port;
         stateMutex = new Mutex();
+        socketMutex = new Mutex();
         scopes = new Map<ScopeId, Array<String>>();
         breakpoints = new Map<String, Array<Int>>();
         references = new References();
+        threads = new Map<Int, String>();
         
         connect();
 
@@ -116,7 +120,7 @@ class Server {
                         var params:SetBreakpointsParams = m.params;
                         var result = [];
                         if (!breakpoints.exists(params.file)) breakpoints[params.file] = [];
-                        trace('Protocol.SetBreakpoints: $params');
+                    
                         for (rm in breakpoints[params.file]) {
                             Debugger.deleteBreakpoint(rm);
                         }
@@ -126,117 +130,135 @@ class Server {
                         }
                         breakpoints[params.file] = result;
                         m.result = result;
-                        sendResponse(m);
+
+                    case Protocol.Pause:
+                        Debugger.breakNow(true);
 
                     case Protocol.Continue:
                         Debugger.continueThreads(m.params.threadId, 1);
-                        sendResponse(m);
 
                     case Protocol.Threads:
-                        var threadInfo:Array<cpp.vm.ThreadInfo> = Debugger.getThreadInfos();
-                        m.result = [for (ti in threadInfo) {id:ti.number, name:'Thread${ti.number}'}];
-                        sendResponse(m);
+                        stateMutex.acquire();
+                        m.result = [for (tid in threads.keys()) {id:tid, name:threads[tid]}];
+                        stateMutex.release();
 
                     case Protocol.GetScopes:
                         references = new References();
-
-                        var threadId = 0; //TODO: map it to frameId?
-                        var frameId = m.params.frameId;
                         m.result = [];
 
-                        var stackVariables:Array<String> = Debugger.getStackVariables(threadId, frameId, false);
-                        var localsId = 0;
-                        var localsNames:Array<String> = [];
-                        var localsVals:Array<Dynamic> = [];
-                        for (varName in stackVariables) {
-                            if (varName == "this") {
-                                var inner = new Map<String, Dynamic>();
-                                var value:Dynamic = Debugger.getStackVariableValue(threadId, frameId, "this", false);
-                                var id = references.create(VariablesPrinter.resolveValue(value));
-                                m.result.push({id:id, name:ScopeId.members});
-                            } else {
-                                if (localsId == 0) {
-                                    localsId = references.create(NameValueList(localsNames, localsVals));
-                                    m.result.push({id:localsId, name:ScopeId.locals});
+                        stateMutex.acquire();
+                        trace('Protocol.GetScopes: $currentThreadInfo');
+                        if (currentThreadInfo != null) {
+                            var threadId:Int = currentThreadInfo.number;
+                            var frameId:Int = m.params.frameId;
+
+                            trace('FrameId: $frameId, threadId: $threadId');
+
+                            var stackVariables:Array<String> = Debugger.getStackVariables(threadId, frameId, false);
+                            trace(stackVariables);
+                            var localsId = 0;
+                            var localsNames:Array<String> = [];
+                            var localsVals:Array<Dynamic> = [];
+                            for (varName in stackVariables) {
+                                if (varName == "this") {
+                                    var inner = new Map<String, Dynamic>();
+                                    var value:Dynamic = Debugger.getStackVariableValue(threadId, frameId, "this", false);
+                                    var id = references.create(VariablesPrinter.resolveValue(value));
+                                    m.result.push({id:id, name:ScopeId.members});
+                                } else {
+                                    if (localsId == 0) {
+                                        localsId = references.create(NameValueList(localsNames, localsVals));
+                                        m.result.push({id:localsId, name:ScopeId.locals});
+                                    }
+                                    localsNames.push(varName);
+                                    localsVals.push(Debugger.getStackVariableValue(threadId, frameId, varName, false));
                                 }
-                                localsNames.push(varName);
-                                localsVals.push(Debugger.getStackVariableValue(threadId, frameId, varName, false));
                             }
                         }
-                        sendResponse(m);
+                        stateMutex.release();
 
                     case Protocol.GetVariables:
                         m.result = [];
-                        var refId = m.params.variablesReference;
-                        var value:Value = references.get(refId);
-                        var vars = VariablesPrinter.getInnerVariables(value, m.params.start, m.params.count);
-                        //trace(vars);
-                        for (v in vars) {
-                            var varInfo:VarInfo = {
-                                name:v.name,
-                                type:v.type,
-                                value:"",
-                                variablesReference:0,
+
+                        stateMutex.acquire();
+                        if (currentThreadInfo != null) {
+                            var refId = m.params.variablesReference;
+                            var value:Value = references.get(refId);
+                            var vars = VariablesPrinter.getInnerVariables(value, m.params.start, m.params.count);
+                            //trace(vars);
+                            for (v in vars) {
+                                var varInfo:VarInfo = {
+                                    name:v.name,
+                                    type:v.type,
+                                    value:"",
+                                    variablesReference:0,
+                                }
+                                switch (v.value) {
+                                    case NameValueList(names, values):
+                                        throw "impossible";
+
+                                    case IntIndexed(value, length):
+                                        var refId = references.create(v.value);
+                                        varInfo.variablesReference = refId;
+                                        varInfo.indexedVariables = length;
+
+                                    case StringIndexed(value, names):
+                                        var refId = references.create(v.value);
+                                        varInfo.variablesReference = refId;
+                                        varInfo.namedVariables = names.length;
+
+                                    case Single(value):
+                                        varInfo.value = value;
+                                }
+                                m.result.push(varInfo);
                             }
-                            switch (v.value) {
-                                case NameValueList(names, values):
-                                    throw "impossible";
-
-                                case IntIndexed(value, length):
-                                    var refId = references.create(v.value);
-                                    varInfo.variablesReference = refId;
-                                    varInfo.indexedVariables = length;
-
-                                case StringIndexed(value, names):
-                                    var refId = references.create(v.value);
-                                    varInfo.variablesReference = refId;
-                                    varInfo.namedVariables = names.length;
-
-                                case Single(value):
-                                    varInfo.value = value;
-                            }
-                            m.result.push(varInfo);
                         }
-                        sendResponse(m);
+                        stateMutex.release();
 
                     case Protocol.Evaluate:
                         var expr = m.params.expr;
-                        var threadId = 0; //TODO
-                        var frameId = m.params.frameId;
-                        m.result = VariablesPrinter.evaluate(expr, threadId, frameId);
-                        sendResponse(m);
+
+                        stateMutex.acquire();
+                        if (currentThreadInfo != null) {
+                            var threadId = currentThreadInfo.number;
+                            var frameId = m.params.frameId;
+                            m.result = VariablesPrinter.evaluate(expr, threadId, frameId);
+                        }
+                        stateMutex.release();
 
                     case Protocol.StackTrace:
-                        var threadInfo = Debugger.getThreadInfo(m.params.threadId, false);
                         m.result = [];
-                        for (s in threadInfo.stack) {
-                            if (s.className == "debugger.VSCodeRemote") break;
-                            var frameNumber = threadInfo.stack.length - 1;
-                            m.result.unshift({
-                                id:frameNumber,
-                                name:'${s.className}.${s.functionName}',
-                                source:file2path[s.fileName],
-                                line:s.lineNumber,
-                                column:0,
-                                artificial:false
-                            });
+
+                        stateMutex.acquire();
+                        if (currentThreadInfo != null) {
+                            var frameNumber = currentThreadInfo.stack.length - 1;
+                            var i = 0;
+                            for (s in currentThreadInfo.stack) {
+                                if (s.fileName == "hxcpp/debug/jsonrpc/Server.hx") break;
+                                
+                                m.result.unshift({
+                                    id:i++,
+                                    name:'${s.className}.${s.functionName}',
+                                    source:file2path[s.fileName],
+                                    line:s.lineNumber,
+                                    column:0,
+                                    artificial:false
+                                });
+                            }
                         }
-	                    sendResponse(m);
+                        stateMutex.release();
 
                     case Protocol.Next:
                         Debugger.stepThread(0, Debugger.STEP_OVER, 1);
-                        sendResponse(m);
 
                     case Protocol.StepIn:
                         Debugger.stepThread(0, Debugger.STEP_INTO, 1);
-                        sendResponse(m);
 
                     case Protocol.StepOut:
                         Debugger.stepThread(0, Debugger.STEP_OUT, 1);
-                        sendResponse(m);
 
                 }
-                trace('Message: $m');
+                sendResponse(m);
             }
         }
     }
@@ -249,9 +271,12 @@ class Server {
     }
 
     private function sendResponse(m:Message) {
+        socketMutex.acquire();
         var serialized:String = haxe.Json.stringify(m);
         socket.output.writeInt16(serialized.length);
         socket.output.writeString(serialized);
+        trace('sendResponse: ${m.id} ${m.method}');
+        socketMutex.release();
     }
 
     private function sendEvent<T>(event:NotificationMethod<T>, ?params:T) {
@@ -272,26 +297,23 @@ class Server {
         //if (!started) return;
 
         switch (event) {
-            case Debugger.THREAD_CREATED:
-                //emit(ThreadCreated(threadNumber));
             case Debugger.THREAD_TERMINATED:
-            /*
-                mStateMutex.acquire();
-                if (threadNumber == mCurrentThreadNumber) {
-                    mCurrentThreadInfo = null;
+                stateMutex.acquire();
+                threads.remove(threadNumber);
+                if (currentThreadInfo != null && threadNumber == currentThreadInfo.number) {
+                    currentThreadInfo = null;
                 }
-                mStateMutex.release();
-                emit(ThreadTerminated(threadNumber));
-            */    
-            case Debugger.THREAD_STARTED:
-            /*
-                mStateMutex.acquire();
-                if (threadNumber == mCurrentThreadNumber) {
-                    mCurrentThreadInfo = null;
+                stateMutex.release();
+                sendEvent(Protocol.ThreadExit, {threadId:threadNumber});
+
+            case Debugger.THREAD_CREATED | Debugger.THREAD_STARTED:
+                stateMutex.acquire();
+                threads.set(threadNumber, 'Thread${threadNumber}');
+                if (currentThreadInfo != null && threadNumber == currentThreadInfo.number) {
+                    currentThreadInfo = null;
                 }
-                mStateMutex.release();
-                emit(ThreadStarted(threadNumber));
-            */   
+                stateMutex.release();
+                sendEvent(Protocol.ThreadStart, {threadId:threadNumber});
             case Debugger.THREAD_STOPPED:
                 
                 stateMutex.acquire();
@@ -299,13 +321,13 @@ class Server {
                 stateMutex.release();
 
                 if (currentThreadInfo.status == cpp.vm.ThreadInfo.STATUS_STOPPED_BREAK_IMMEDIATE) {
-
+                    sendEvent(Protocol.PauseStop, {threadId:threadNumber});
                 }
                 else if (currentThreadInfo.status == cpp.vm.ThreadInfo.STATUS_STOPPED_BREAKPOINT) {
                     sendEvent(Protocol.BreakpointStop, {threadId:threadNumber});
                 }
                 else {
-                    sendEvent(Protocol.ExceptionStop);
+                    sendEvent(Protocol.ExceptionStop, {text:currentThreadInfo.criticalErrorDescription});
                 }
                 //ThreadStopped(threadNumber, stackFrame, className,
                 //                functionName, fileName, lineNumber));

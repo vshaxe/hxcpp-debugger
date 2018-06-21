@@ -74,6 +74,7 @@ class VariablesPrinter {
                 trace('start: $start, count:$count, end: ${start + count}');
                 for (i in start...start + count) {
                     var value = val.get(i);
+                    if (value == null) continue;
                     result.push({
                         name:'$i',
                         value:resolveValue(value),

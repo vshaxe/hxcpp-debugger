@@ -23,6 +23,7 @@ typedef Error = {
 
 @:publicFields
 class Protocol {
+	static inline var Pause = new RequestMethod<{}, Void>("pause");
 	static inline var Continue = new RequestMethod<{threadId:Int}, Void>("continue");
 	static inline var StepIn = new RequestMethod<{},Void>("stepIn");
 	static inline var Next = new RequestMethod<{},Void>("next");
@@ -34,15 +35,20 @@ class Protocol {
 	static inline var SwitchFrame = new RequestMethod<{id:Int},Void>("switchFrame");
 	static inline var GetScopes = new RequestMethod<{frameId:Int},Array<ScopeInfo>>("getScopes");
     static inline var GetVariables = new RequestMethod<{variablesReference:Int, ?start:Int, ?count:Int}, Array<VarInfo>>("getVariables");
+	
 	//static inline var GetScopeVariables = new RequestMethod<{},Array<VarInfo>>("getScopeVariables");
 	//static inline var GetStructure = new RequestMethod<{},Array<VarInfo>>("getStructure");
 	static inline var SetVariable = new RequestMethod<{expr:String,value:String},VarInfo>("setVariable");
     static inline var Threads = new RequestMethod<{}, Array<ThreadInfo>>("threads");
+	static inline var Evaluate = new RequestMethod<{expr:String, frameId:Int},VarInfo>("evaluate");
+	static inline var SetExceptionOptions = new RequestMethod<Array<String>,Void>("setExceptionOptions");
 
 	static inline var BreakpointStop = new NotificationMethod<{threadId:Int}>("breakpointStop");
 	static inline var ExceptionStop = new NotificationMethod<{text:String}>("exceptionStop");
-	static inline var Evaluate = new RequestMethod<{expr:String, frameId:Int},VarInfo>("evaluate");
-	static inline var SetExceptionOptions = new RequestMethod<Array<String>,Void>("setExceptionOptions");
+	static inline var PauseStop = new NotificationMethod<{threadId:Int}>("pauseStop");
+	static inline var ThreadStart = new NotificationMethod<{threadId:Int}>("threadStart");
+	static inline var ThreadExit = new NotificationMethod<{threadId:Int}>("ThreadExit");
+	
 }
 
 typedef SetBreakpointsParams = {
