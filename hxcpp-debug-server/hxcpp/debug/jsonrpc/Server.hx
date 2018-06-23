@@ -17,11 +17,10 @@ import hxcpp.debug.jsonrpc.Protocol;
 }
 
 private class References {
-    var lastId:Int;
+    static var lastId:Int = 1000;
     var references:Map<Int, Value>;
 
     public function new() { 
-        lastId = 1000;
         references = new Map<Int, Value>();
     }
 
@@ -34,6 +33,10 @@ private class References {
 
     public function get(id:Int):Value {
         return references[id];
+    }
+
+    public function clear() {
+        references = new Map<Int, Value>();
     }
 }
 
@@ -151,7 +154,6 @@ class Server {
                         stateMutex.release();
 
                     case Protocol.GetScopes:
-                        references = new References();
                         m.result = [];
 
                         stateMutex.acquire();
@@ -226,7 +228,33 @@ class Server {
                         if (currentThreadInfo != null) {
                             var threadId = currentThreadInfo.number;
                             var frameId = m.params.frameId;
-                            m.result = VariablesPrinter.evaluate(expr, threadId, frameId);
+                            var v = VariablesPrinter.evaluate(expr, threadId, frameId);
+                            m.result = {
+                                name:expr,
+                                value:"",
+                                type:"",
+                                variablesReference:0
+                            };
+                            if (v != null) {
+                                m.result.type = v.type;
+                                switch (v.value) {
+                                    case NameValueList(names, values):
+                                        throw "impossible";
+
+                                    case IntIndexed(value, length):
+                                        var refId = references.create(v.value);
+                                        m.result.variablesReference = refId;
+                                        m.result.indexedVariables = length;
+
+                                    case StringIndexed(value, names):
+                                        var refId = references.create(v.value);
+                                        m.result.variablesReference = refId;
+                                        m.result.namedVariables = names.length;
+
+                                    case Single(value):
+                                        m.result.value = value;
+                                }
+                            }
                         }
                         stateMutex.release();
 
@@ -322,6 +350,7 @@ class Server {
                 
                 stateMutex.acquire();
                 currentThreadInfo = Debugger.getThreadInfo(threadNumber, false);
+                references.clear();
                 stateMutex.release();
 
                 if (currentThreadInfo.status == cpp.vm.ThreadInfo.STATUS_STOPPED_BREAK_IMMEDIATE) {

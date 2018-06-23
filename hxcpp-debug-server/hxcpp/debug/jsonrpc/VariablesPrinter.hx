@@ -136,8 +136,10 @@ class VariablesPrinter {
                 else {
                     current = Reflect.getProperty(current, f);
                 }
-                if (current == null)
+                if (current == null) {
+                    result = null;
                     break; //can't evaluate
+                }
 
                 result = {
                     name:expression,

@@ -146,7 +146,7 @@ class Main extends adapter.DebugSession {
 				};
 				if (vi.indexedVariables != null) variable.indexedVariables = vi.indexedVariables;
 				if (vi.namedVariables != null) variable.namedVariables = vi.namedVariables;
-				trace(haxe.Json.stringify(variable));
+				//trace(haxe.Json.stringify(variable));
 				vars.push(variable);
 
 			}
@@ -255,10 +255,12 @@ class Main extends adapter.DebugSession {
 			} else {
 				response.success = true;
 				response.body = {
-					result: result.value,
-					type: result.type,
-					variablesReference: 0
-				}
+					result:result.value,
+					type:result.type,
+					variablesReference:result.variablesReference
+				};
+				if (result.indexedVariables != null) response.body.indexedVariables = result.indexedVariables;
+				if (result.namedVariables != null) response.body.namedVariables = result.namedVariables;
 			}
 			sendResponse(response);
 		});
