@@ -37,6 +37,7 @@ private class References {
     }
 }
 
+@:keep
 class Server {
 
     var host:String;
@@ -52,8 +53,15 @@ class Server {
     var started:Bool;
 
     static var startQueue:Deque<Bool> = new Deque<Bool>();
-
-    public function new(host:String, port:Int=6972) {
+    
+    @:keep static var inst = {
+        var host:String = Macro.getDefinedValue("HXCPP_DEBUG_HOST", "127.0.0.1");
+        var port:Int = Std.parseInt(Macro.getDefinedValue("HXCPP_DEBUG_PORT", "6972"));
+        new Server(host, port);
+    }
+    
+    public function new(host:String, port:Int) {
+        trace('Debug Server Started:');
         this.host = host;
         this.port = port;
         stateMutex = new Mutex();
@@ -96,10 +104,10 @@ class Server {
     }
 
     private function debuggerThreadMain() {
-       // Debugger.setEventNotificationHandler();
        Debugger.setEventNotificationHandler(handleThreadEvent);
        Debugger.enableCurrentThreadDebugging(false);
        Debugger.breakNow(true);
+
        var fullPathes = Debugger.getFilesFullPath();
        var files = Debugger.getFiles();
        var path2file = new Map<String, String>();

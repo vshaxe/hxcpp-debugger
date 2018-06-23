@@ -1,0 +1,12 @@
+{
+    "name": "hxcpp-debug-server",
+    "url" : "https://github.com/jasononeil/useless/",
+    "license": "MIT",
+    "tags": ["cpp only"],
+    "description": "debugger jsonrpc server",
+    "version": "1.0.0",
+    "classPath": "./",
+    "releasenote": "Initial release",
+    "contributors": ["nulld"],
+    "dependencies": {}
+  }
