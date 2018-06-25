@@ -203,12 +203,12 @@ class Server {
                                     case NameValueList(names, values):
                                         throw "impossible";
 
-                                    case IntIndexed(value, length):
+                                    case IntIndexed(value, length, _):
                                         var refId = references.create(v.value);
                                         varInfo.variablesReference = refId;
                                         varInfo.indexedVariables = length;
 
-                                    case StringIndexed(value, names):
+                                    case StringIndexed(value, names, _):
                                         var refId = references.create(v.value);
                                         varInfo.variablesReference = refId;
                                         varInfo.namedVariables = names.length;
@@ -241,12 +241,12 @@ class Server {
                                     case NameValueList(names, values):
                                         throw "impossible";
 
-                                    case IntIndexed(value, length):
+                                    case IntIndexed(value, length, _):
                                         var refId = references.create(v.value);
                                         m.result.variablesReference = refId;
                                         m.result.indexedVariables = length;
 
-                                    case StringIndexed(value, names):
+                                    case StringIndexed(value, names, _):
                                         var refId = references.create(v.value);
                                         m.result.variablesReference = refId;
                                         m.result.namedVariables = names.length;

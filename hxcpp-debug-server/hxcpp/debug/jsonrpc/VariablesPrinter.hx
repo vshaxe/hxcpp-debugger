@@ -14,8 +14,8 @@ enum VarType {
 
 enum Value {
     Single(val:Dynamic);
-    IntIndexed(val:Dynamic, length:Int);
-    StringIndexed(val:Dynamic, names:Array<String>);
+    IntIndexed(val:Dynamic, length:Int, fieldAccess:Dynamic -> Int -> Dynamic);
+    StringIndexed(val:Dynamic, names:Array<String>, fieldAccess:Dynamic -> String -> Dynamic);
     NameValueList(names:Array<String>, values:Array<Dynamic>);
 }
 
@@ -43,12 +43,11 @@ class VariablesPrinter {
                     });
                 }
 
-            case StringIndexed(val, names):
+            case StringIndexed(val, names, fieldAccess):
                 if (count < 0) count = names.length;
                 var filteredNames = names.slice(start, start + count);
                 for (n in filteredNames) {
-                    var value = Reflect.getProperty(val, n);
-                    if (value == null) value = Reflect.field(val, n);
+                    var value = fieldAccess(val, n);
                     result.push({
                         name:n,
                         value:resolveValue(value),
@@ -56,24 +55,11 @@ class VariablesPrinter {
                     });
                 }
             
-            case IntIndexed(val, length) if (getType(val) == "Array"):
+             case IntIndexed(val, length, fieldAccess):
                 if (count < 0) count = length;
                 trace('start: $start, count:$count, end: ${start + count}');
                 for (i in start...start + count) {
-                    var value = val[i];
-                    result.push({
-                        name:'$i',
-                        value:resolveValue(value),
-                        type: getType(value)
-                    });
-                }
-                trace(result);
-
-             case IntIndexed(val, length):
-                if (count < 0) count = length;
-                trace('start: $start, count:$count, end: ${start + count}');
-                for (i in start...start + count) {
-                    var value = val.get(i);
+                    var value = fieldAccess(val, i);
                     if (value == null) continue;
                     result.push({
                         name:'$i',
@@ -99,23 +85,28 @@ class VariablesPrinter {
                 Single(value);
 
             case TObject:
-                StringIndexed(value, Reflect.fields(value));
+                StringIndexed(value, Reflect.fields(value), propGet);
 
             case TClass(Array):
                 var arr:Array<Dynamic> = cast value;
-                IntIndexed(value, arr.length);
+                IntIndexed(value, arr.length, arrayGet);
+
+            case TClass(haxe.ds.StringMap):
+                var map:haxe.ds.StringMap<Dynamic> = cast value;
+                var keys = [for (k in map.keys()) '$k'];
+                StringIndexed(value, keys, stringMapGet);
 
             case TClass(haxe.ds.IntMap):
                 var map:haxe.ds.IntMap<Dynamic> = cast value;
                 var keys = [for (k in map.keys()) '$k'];
-                IntIndexed(value, keys.length);
+                IntIndexed(value, keys.length, intMapGet);
 
             case TClass(c):
                 var all = getClassProps(c);
                 
                 StringIndexed(value, [for (f in all) 
                     if (!Reflect.isFunction(Reflect.getProperty(value, f))) 
-                        f]);
+                        f], propGet);
         }
     }
 
@@ -218,5 +209,26 @@ class VariablesPrinter {
 
     public static function toString(varType:VarType):String {
         return "";
+    }
+
+    public static function arrayGet(value:Dynamic, index:Int):Dynamic {
+        var arr:Array<Dynamic> = cast value;
+        return arr[index];
+    }
+
+    public static function propGet(value:Dynamic, key:String):Dynamic {
+         var propVal = Reflect.getProperty(value, key);
+         if (propVal == null) propVal = Reflect.field(value, key);
+         return propVal;
+    }
+
+    public static function stringMapGet(value:Dynamic, key:String):Dynamic {
+        var map:Map<String, Dynamic> = cast value;
+        return map.get(key);
+    }
+
+    public static function intMapGet(value:Dynamic, key:Int):Dynamic {
+        var map:Map<Int, Dynamic> = cast value;
+        return map.get(key);
     }
 }
