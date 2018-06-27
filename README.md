@@ -1,22 +1,14 @@
 # Howto use
-after install `hxcpp-debug-jsonrpc` library is available. And can be using with your project.
+after install you need to include `hxcpp-debug-server` library into your project:
 
-for eg:
-build.hxml:
+* build.hxml
 ```
--lib hxcpp-debug-jsonrpc
-```
-
-openfl project.xml:
-```
-<haxelib name="hxcpp-debug-jsonrpc" if="debug" />
+-lib hxcpp-debug-server
 ```
 
-Main.hx
+* openfl project.xml:
 ```
-#if debug
-new hxcpp.debug.jsonrpc.Server('127.0.0.1', 6972);
-#end
+<haxelib name="hxcpp-debug-server" if="debug" />
 ```
 
 # Installing from source
