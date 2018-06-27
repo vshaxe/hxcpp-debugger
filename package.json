@@ -38,7 +38,7 @@
 	},
 	"scripts": {
 		"vscode:prepublish": "haxe build.hxml",
-		"postinstall": "haxelib dev hxcpp-debug-jsonrpc ./server"
+		"postinstall": "haxelib dev hxcpp-debug-server ./hxcpp-debug-server"
 	},
 	"contributes": {
 		"debuggers": [

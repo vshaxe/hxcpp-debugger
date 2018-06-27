@@ -28,6 +28,7 @@ class Main extends adapter.DebugSession {
 		haxe.Log.trace = traceToOutput;
 		sendEvent(new adapter.DebugSession.InitializedEvent());
 		response.body.supportsSetVariable = true;
+		response.body.supportsValueFormattingOptions = false;
 		response.body.supportsConfigurationDoneRequest = true;
 		sendResponse(response);
 		postLaunchActions = [];
@@ -139,9 +140,9 @@ class Main extends adapter.DebugSession {
 			for (vi in varInfos) {
 				var variable:Variable = {
 					name:vi.name,
-					value:vi.value,
+					value:Std.string(vi.value),
 					type:vi.type,
-					kind:vi.type,
+					//kind:vi.type,
 					variablesReference:vi.variablesReference
 				};
 				if (vi.indexedVariables != null) variable.indexedVariables = vi.indexedVariables;
