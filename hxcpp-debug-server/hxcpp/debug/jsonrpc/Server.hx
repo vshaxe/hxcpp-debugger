@@ -187,10 +187,12 @@ class Server {
                         m.result = [];
 
                         stateMutex.acquire();
+
                         if (currentThreadInfo != null) {
                             var refId = m.params.variablesReference;
                             var value:Value = references.get(refId);
                             var vars = VariablesPrinter.getInnerVariables(value, m.params.start, m.params.count);
+
                             //trace(vars);
                             for (v in vars) {
                                 var varInfo:VarInfo = {
