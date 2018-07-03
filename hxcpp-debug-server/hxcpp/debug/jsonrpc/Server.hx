@@ -118,8 +118,8 @@ class Server {
        for (i in 0...files.length) {
            var file = files[i];
            var path = fullPathes[i];
-           path2file[path] = file;
-           file2path[file] = path;
+           path2file[path.toUpperCase()] = file;
+           file2path[file.toUpperCase()] = path;
        }
        startQueue.push(true);
 
@@ -130,13 +130,15 @@ class Server {
                     case Protocol.SetBreakpoints:
                         var params:SetBreakpointsParams = m.params;
                         var result = [];
+                        
                         if (!breakpoints.exists(params.file)) breakpoints[params.file] = [];
                     
                         for (rm in breakpoints[params.file]) {
                             Debugger.deleteBreakpoint(rm);
                         }
                         for (b in params.breakpoints) {
-                            var id = Debugger.addFileLineBreakpoint(path2file[params.file], b.line);
+                            
+                            var id = Debugger.addFileLineBreakpoint(path2file[params.file.toUpperCase()], b.line);
                             result.push(id);
                         }
                         breakpoints[params.file] = result;
@@ -273,7 +275,7 @@ class Server {
                                 m.result.unshift({
                                     id:i++,
                                     name:'${s.className}.${s.functionName}',
-                                    source:file2path[s.fileName],
+                                    source:file2path[s.fileName.toUpperCase()],
                                     line:s.lineNumber,
                                     column:0,
                                     artificial:false
