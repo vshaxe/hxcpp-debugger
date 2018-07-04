@@ -55,7 +55,7 @@ class VariablesPrinter {
                     });
                 }
             
-             case IntIndexed(val, length, fieldAccess):
+            case IntIndexed(val, length, fieldAccess):
                 if (count < 0) count = length;
                 trace('start: $start, count:$count, end: ${start + count}');
                 for (i in start...start + count) {
@@ -173,7 +173,6 @@ class VariablesPrinter {
                 if (Std.is(value, Class)) {
                     return getClassName(cast value);
                 }
-
                 return "Anonymous";
 
             case TFunction:
@@ -194,10 +193,10 @@ class VariablesPrinter {
         return null;
     }
 
-    static function getClassName(klass:Class<Dynamic>) : String {
+    static function getClassName(klass:Class<Dynamic>):String {
         var className : String = "<unknown class name>";
         if (null != klass) {
-           var klassName : String = Type.getClassName(klass);
+            var klassName : String = Type.getClassName(klass);
             if (null != klassName && 0 != klassName.length) {
                 className = klassName;
             }
@@ -215,17 +214,15 @@ class VariablesPrinter {
     }
 
     public static function propGet(value:Dynamic, key:String):Dynamic {
-         var propVal = null;
-         try
-         {
+        var propVal = null;
+        try {
             propVal = Reflect.getProperty(value, key);
             if (propVal == null) propVal = Reflect.field(value, key);
-         }
-         catch(e:Dynamic)
-         {
-             trace(e);
-         }
-         return propVal;
+        }
+        catch(e:Dynamic) {
+            trace(e);
+        }
+        return propVal;
     }
 
     public static function stringMapGet(value:Dynamic, key:String):Dynamic {

@@ -10,7 +10,7 @@ class Macro {
     }
 
     macro public static function getDefinedValue(key:String, defaultV) {
-		var val = Context.definedValue(key);
-		return (val == null) ? macro ${defaultV} : macro $v{val};
-	}
+        var val = Context.definedValue(key);
+        return (val == null) ? macro ${defaultV} : macro $v{val};
+    }
 }
