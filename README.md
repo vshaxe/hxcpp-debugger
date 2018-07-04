@@ -19,7 +19,7 @@ Then the library needs to be included in your project:
 * Lime/OpenFL `project.xml`:
 
 	```
-	<haxelib name="hxcpp-debug-server" if="debug" />
+	<haxelib name="hxcpp-debug-server" />
 	```
 
 Finally, you need a launch configuration:
