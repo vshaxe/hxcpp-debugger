@@ -40,10 +40,20 @@
 		"mocha": "^2.4.5"
 	},
 	"scripts": {
-		"vscode:prepublish": "haxe build.hxml",
-		"postinstall": "haxelib dev hxcpp-debug-server ./hxcpp-debug-server"
+		"vscode:prepublish": "haxe build.hxml"
 	},
+	"main": "bin/extension.js",
+	"activationEvents": [
+		"onCommand:hxcpp-debugger.setup"
+	],
 	"contributes": {
+		"commands": [
+			{
+				"title": "Setup",
+				"command": "hxcpp-debugger.setup",
+				"category": "HXCPP Debugger"
+			}
+		],
 		"debuggers": [
 			{
 				"type": "hxcpp",

@@ -6,7 +6,7 @@ This VSCode extension allows you to debug [HXCPP](https://haxe.org/manual/target
 
 ## Usage
 
-To debug a HXCPP application, it needs to be compiled with the `hxcpp-debug-server` library. First, install the library by running `haxelib install hxcpp-debug-server` or running the "HXCPP: Setup Debugging" command.
+To debug a HXCPP application, it needs to be compiled with the `hxcpp-debug-server` library and in debug mode. First, run the "HXCPP: Setup" command from the command palette (<kbd>F1</kbd>) to install the library.
 
 Then the library needs to be included in your project:
 
@@ -51,6 +51,7 @@ Replace `/bin/application.exe` with the path to your executable file.
     ```hxml
     npm install
     haxelib install hxnodejs
+    haxelib install vscode
     haxelib git vscode-debugadapter https://github.com/vshaxe/vscode-debugadapter-extern
     haxelib dev hxcpp-debug-server hxcpp-debug-server
     ```

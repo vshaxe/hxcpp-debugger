@@ -1,6 +1,14 @@
 -lib vscode-debugadapter
 -lib hxnodejs
+-lib vscode
 -cp src
 -cp hxcpp-debug-server
 -js bin/hxcpp_adapter.js
 -main Main
+
+--next
+
+-lib vscode
+-cp src
+-js bin/extension.js
+Extension
