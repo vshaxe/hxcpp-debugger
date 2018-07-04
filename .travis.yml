@@ -1,0 +1,12 @@
+language: haxe
+
+haxe:
+  - 3.4.7
+  - development
+
+install:
+  - haxelib git vscode-debugadapter https://github.com/vshaxe/vscode-debugadapter-extern
+  - haxelib git hxnodejs https://github.com/HaxeFoundation/hxnodejs
+
+script:
+  - haxe build.hxml
