@@ -1,7 +1,5 @@
 package hxcpp.debug.jsonrpc;
 
-using StringTools;
-
 enum VarType {
     TypeNull;
     TypeInt;
@@ -114,6 +112,11 @@ class VariablesPrinter {
      public static function evaluate(expression:String, threadId:Int, frameId:Int):Null<Variable> {
         var result = null;
         var fields = expression.split(".");
+        var stackVariables = cpp.vm.Debugger.getStackVariables(threadId, frameId, false);
+        if (stackVariables.indexOf(fields[0]) == -1) {
+            // try with `this.`
+            fields.unshift("this");
+        }
         var root:Dynamic = null;
         var current = null;
         for (f in fields) {
