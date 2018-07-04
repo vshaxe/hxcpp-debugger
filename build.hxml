@@ -4,7 +4,7 @@
 -cp src
 -cp hxcpp-debug-server
 -js bin/hxcpp_adapter.js
--main Main
+-main Adapter
 
 --next
 

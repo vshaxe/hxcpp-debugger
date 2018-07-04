@@ -14,7 +14,7 @@ typedef HxppLaunchRequestArguments = {
 }
 
 @:keep
-class Main extends adapter.DebugSession {
+class Adapter extends adapter.DebugSession {
 
     function traceToOutput(value:Dynamic, ?infos:haxe.PosInfos) {
         var msg = value;
@@ -276,6 +276,6 @@ class Main extends adapter.DebugSession {
     }
 
     static function main() {
-        adapter.DebugSession.run(Main);
+        adapter.DebugSession.run(Adapter);
     }
 }
