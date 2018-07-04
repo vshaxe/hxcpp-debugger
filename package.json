@@ -1,10 +1,10 @@
 {
 	"name": "hxcpp-debugger",
 	"displayName": "HXCPP Debugger",
-	"version": "1.2.0",
+	"version": "1.0.0",
 	"publisher": "vshaxe",
 	"license": "MIT",
-	"description": "Debugger for HXCPP",
+	"description": "Debugger for Haxe/HXCPP applications",
 	"author": {
 		"name": "vshaxe"
 	},
@@ -14,12 +14,15 @@
 	"categories": [
 		"Debuggers"
 	],
+	"icon": "images/icon.png",
 	"galleryBanner": {
 		"theme": "dark",
-		"color": "#d31a20"
+		"color": "#000000"
 	},
 	"keywords": [
-		"haxe"
+		"haxe",
+		"hxcpp",
+		"C++"
 	],
 	"repository": {
 		"type": "git",
