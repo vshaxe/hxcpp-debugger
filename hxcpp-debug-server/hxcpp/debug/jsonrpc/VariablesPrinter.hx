@@ -1,5 +1,7 @@
 package hxcpp.debug.jsonrpc;
 
+using StringTools;
+
 enum VarType {
     TypeNull;
     TypeInt;
@@ -15,7 +17,7 @@ enum VarType {
 enum Value {
     Single(val:Dynamic);
     IntIndexed(val:Dynamic, length:Int, fieldAccess:Dynamic -> Int -> Dynamic);
-    StringIndexed(val:Dynamic, names:Array<String>, fieldAccess:Dynamic -> String -> Dynamic);
+    StringIndexed(val:Dynamic, names:Array<String>, fieldsAsString:Bool, fieldAccess:Dynamic -> String -> Dynamic);
     NameValueList(names:Array<String>, values:Array<Dynamic>);
 }
 
@@ -43,21 +45,20 @@ class VariablesPrinter {
                     });
                 }
 
-            case StringIndexed(val, names, fieldAccess):
+            case StringIndexed(val, names, fieldsAsString, fieldAccess):
                 if (count < 0) count = names.length;
                 var filteredNames = names.slice(start, start + count);
                 for (n in filteredNames) {
                     var value = fieldAccess(val, n);
                     result.push({
-                        name:n,
-                        value:resolveValue(value),
+                        name: if (fieldsAsString) '"$n"' else n,
+                        value: resolveValue(value),
                         type: getType(value)
                     });
                 }
             
             case IntIndexed(val, length, fieldAccess):
                 if (count < 0) count = length;
-                trace('start: $start, count:$count, end: ${start + count}');
                 for (i in start...start + count) {
                     var value = fieldAccess(val, i);
                     result.push({
@@ -66,7 +67,6 @@ class VariablesPrinter {
                         type: getType(value)
                     });
                 }
-                trace(result);
 
             case Single(_):
                 throw "not structured";
@@ -76,15 +76,18 @@ class VariablesPrinter {
 
     public static function resolveValue(value:Dynamic):Value {
         return switch (Type.typeof(value)) {
-            case TNull, TUnknown, TInt, TFloat, TBool, TFunction, TClass(String):
+            case TNull, TUnknown, TInt, TFloat, TBool, TFunction:
                 Single(value);
+            
+            case TClass(String):
+                Single('"$value"');
 
             case TEnum(e):
                 //TODO
                 Single(value);
 
             case TObject:
-                StringIndexed(value, Reflect.fields(value), propGet);
+                StringIndexed(value, Reflect.fields(value), false, propGet);
 
             case TClass(Array):
                 var arr:Array<Dynamic> = cast value;
@@ -93,18 +96,18 @@ class VariablesPrinter {
             case TClass(haxe.ds.StringMap):
                 var map:haxe.ds.StringMap<Dynamic> = cast value;
                 var keys = [for (k in map.keys()) '$k'];
-                StringIndexed(value, keys, stringMapGet);
+                StringIndexed(value, keys, true, stringMapGet);
 
             case TClass(haxe.ds.IntMap):
                 var map:haxe.ds.IntMap<Dynamic> = cast value;
                 var keys = [for (k in map.keys()) '$k'];
-                StringIndexed(value, keys, intMapGet);
+                StringIndexed(value, keys, false, intMapGet);
                 
             case TClass(c):
                 var all = getClassProps(c);
                 StringIndexed(value, [for (f in all) 
                     if (!Reflect.isFunction(propGet(value, f))) 
-                        f], propGet);
+                        f], false, propGet);
         }
     }
 
