@@ -137,7 +137,6 @@ class Server {
                             Debugger.deleteBreakpoint(rm);
                         }
                         for (b in params.breakpoints) {
-                            
                             var id = Debugger.addFileLineBreakpoint(path2file[params.file.toUpperCase()], b.line);
                             result.push(id);
                         }
@@ -370,10 +369,6 @@ class Server {
                 //                functionName, fileName, lineNumber));
          
         }
-    }
-
-    function printVariables(names:String) {
-
     }
 
     private function closeSocket() {

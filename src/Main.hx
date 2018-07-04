@@ -1,3 +1,4 @@
+import haxe.io.Path;
 import protocol.debug.Types;
 import js.node.Buffer;
 import js.node.Net;
@@ -70,7 +71,7 @@ class Main extends adapter.DebugSession {
         server.listen(6972, function() {
             var port = server.address().port;
             var args = [];
-            var haxeProcess = ChildProcess.spawn(executable, args, {stdio: Pipe});
+            var haxeProcess = ChildProcess.spawn(executable, args, {stdio: Pipe, cwd: Path.directory(executable)});
             haxeProcess.stdout.on(ReadableEvent.Data, onStdout);
             haxeProcess.stderr.on(ReadableEvent.Data, onStderr);
             haxeProcess.on(ChildProcessEvent.Exit, onExit);
