@@ -209,10 +209,12 @@ class Adapter extends adapter.DebugSession {
     }
 
     override function threadsRequest(response:ThreadsResponse) {
-        connection.sendCommand(Protocol.Threads, null, function(error, result) {
-            response.body = {threads:result};
-            sendResponse(response);
-        });
+        if (connection != null) {
+            connection.sendCommand(Protocol.Threads, null, function(error, result) {
+                response.body = {threads:result};
+                sendResponse(response);
+            });
+        }
     }
 
     override function pauseRequest(response:PauseResponse, args:PauseArguments) {
