@@ -157,13 +157,11 @@ class Adapter extends adapter.DebugSession {
     }
 
     override function setVariableRequest(response:SetVariableResponse, args:SetVariableArguments) {
-        /*
-        stopContext.setVariable(args.variablesReference, args.name, args.value, function(varInfo) {
+        connection.sendCommand(Protocol.SetVariable, {expr:args.name, value:args.value}, function(error, varInfo) {
             if (varInfo != null)
                 response.body = {value: varInfo.value};
             sendResponse(response);
         });
-        */
     }
 
     override function stepInRequest(response:StepInResponse, args:StepInArguments) {

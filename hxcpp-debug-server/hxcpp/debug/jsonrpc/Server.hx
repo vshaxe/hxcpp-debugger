@@ -224,6 +224,15 @@ class Server {
                         }
                         stateMutex.release();
 
+                    case Protocol.SetVariable if (currentThreadInfo != null):
+                        stateMutex.acquire();
+                        var name = m.params.expr;
+                        var value = m.params.value;
+                        var frameId = currentThreadInfo.stack.length - 3; // top of stack, minus cpp.vm.Debugger and jsonrpc.Server frames
+                        var result = Debugger.setStackVariableValue(currentThreadInfo.number, frameId, name, value, false);
+                        m.result = {value: result};
+                        stateMutex.release();
+
                     case Protocol.Evaluate:
                         var expr = m.params.expr;
 
@@ -349,8 +358,8 @@ class Server {
                 }
                 stateMutex.release();
                 sendEvent(Protocol.ThreadStart, {threadId:threadNumber});
+
             case Debugger.THREAD_STOPPED:
-                
                 stateMutex.acquire();
                 currentThreadInfo = Debugger.getThreadInfo(threadNumber, false);
                 references.clear();
