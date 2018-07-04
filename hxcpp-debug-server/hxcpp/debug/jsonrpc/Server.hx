@@ -1,5 +1,7 @@
 package hxcpp.debug.jsonrpc;
 
+import hxcpp.debug.jsonrpc.VariablesPrinter;
+import hxcpp.debug.jsonrpc.Protocol;
 #if cpp
 import cpp.vm.Thread;
 import cpp.vm.Mutex;
@@ -8,8 +10,6 @@ import cpp.vm.Deque;
 #else
 typedef Mutex = Dynamic;
 #end
-import hxcpp.debug.jsonrpc.VariablesPrinter;
-import hxcpp.debug.jsonrpc.Protocol;
 
 @:enum abstract ScopeId(String) to String {
     var members = "Members";
