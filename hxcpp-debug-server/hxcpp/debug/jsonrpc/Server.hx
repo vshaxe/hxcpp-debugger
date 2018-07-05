@@ -86,25 +86,28 @@ class Server {
         socket.input.bigEndian = false;
         socket.output.bigEndian = false;
 
-        while (true) {
-            try {
-                var host = new sys.net.Host(host);
-                if (host.ip == 0) {
-                    throw "Name lookup error.";
-                }
-                socket.connect(host, port);
-                log('Connected to vsc debugger server at $host:$port');
+        try {
+            var host = new sys.net.Host(host);
+            if (host.ip == 0) {
+                throw "Name lookup error.";
+            }
+            socket.connect(host, port);
+            log('Connected to vsc debugger server at $host:$port');
 
-                this.socket = socket;
-                return;
-            }
-            catch (e : Dynamic) {
-                log('Failed to connect to vsc debugger server at $host:$port');
-            }
-            closeSocket();
+            this.socket = socket;
+            return;
+        }
+        catch (e : Dynamic) {
+            log('Failed to connect to vsc debugger server at $host:$port');
+        }
+        closeSocket();
+/*
+        while (true) {
+            
             log("Trying again in 3 seconds.");
             Sys.sleep(3);
         }
+*/
     }
 
     private function debuggerThreadMain() {
@@ -136,7 +139,7 @@ class Server {
 
     private function readMessage():Message {
         var length:Int = socket.input.readInt32();
-        trace('Message Length: $length');
+        //trace('Message Length: $length');
         var rawString = socket.input.readString(length);
         return haxe.Json.parse(rawString);
     }
@@ -146,7 +149,7 @@ class Server {
         var serialized:String = haxe.Json.stringify(m);
         socket.output.writeInt32(serialized.length);
         socket.output.writeString(serialized);
-        trace('sendResponse: ${m.id} ${m.method}');
+        //trace('sendResponse: ${m.id} ${m.method}');
         socketMutex.release();
     }
 
@@ -350,7 +353,6 @@ class Server {
                                        functionName : String,
                                        fileName : String, lineNumber : Int)
     {
-        trace(event);
         //if (!started) return;
 
         switch (event) {
