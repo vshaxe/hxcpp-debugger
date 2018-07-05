@@ -1,3 +1,4 @@
+import haxe.Json;
 import haxe.io.Path;
 import protocol.debug.Types;
 import js.node.Buffer;
@@ -30,6 +31,7 @@ class Adapter extends adapter.DebugSession {
         sendEvent(new adapter.DebugSession.InitializedEvent());
         response.body.supportsSetVariable = true;
         response.body.supportsValueFormattingOptions = false;
+        response.body.supportsCompletionsRequest = true;
         sendResponse(response);
         postLaunchActions = [];
     }
@@ -266,6 +268,14 @@ class Adapter extends adapter.DebugSession {
         //connection.sendCommand(Protocol.SetExceptionOptions, args.filters, function(error, result) {
         //	sendResponse(response);
         //});
+    }
+
+    override function completionsRequest(response:CompletionsResponse, args:CompletionsArguments) {
+        connection.sendCommand(Protocol.Completions, args, function(error, result) {
+            if (result != null)
+                response.body = {targets: result};
+            sendResponse(response);
+        });
     }
 
     static function main() {
