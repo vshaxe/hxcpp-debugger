@@ -230,7 +230,7 @@ class Server {
                         var value = m.params.value;
                         var frameId = currentThreadInfo.stack.length - 3; // top of stack, minus cpp.vm.Debugger and jsonrpc.Server frames
                         var result = Debugger.setStackVariableValue(currentThreadInfo.number, frameId, name, value, false);
-                        m.result = {value: result};
+                        m.result = {value: Std.string(result)};
                         stateMutex.release();
 
                     case Protocol.Evaluate:
