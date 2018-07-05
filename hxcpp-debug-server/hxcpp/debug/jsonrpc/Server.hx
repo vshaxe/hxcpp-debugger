@@ -75,13 +75,15 @@ class Server {
         file2path = new Map<String, String>();
 
         Debugger.enableCurrentThreadDebugging(false);
-        connect();
-        Thread.create(debuggerThreadMain);
-        startQueue.pop(true);
-        Debugger.enableCurrentThreadDebugging(true);
+        if (connect())
+        {
+            Thread.create(debuggerThreadMain);
+            startQueue.pop(true);
+            Debugger.enableCurrentThreadDebugging(true);
+        }
     }
 
-    private function connect() {
+    private function connect():Bool {
         var socket : sys.net.Socket = new sys.net.Socket();
         socket.input.bigEndian = false;
         socket.output.bigEndian = false;
@@ -95,12 +97,13 @@ class Server {
             log('Connected to vsc debugger server at $host:$port');
 
             this.socket = socket;
-            return;
+            return true;
         }
         catch (e : Dynamic) {
             log('Failed to connect to vsc debugger server at $host:$port');
         }
         closeSocket();
+        return false;
 /*
         while (true) {
             
