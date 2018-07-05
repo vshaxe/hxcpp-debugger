@@ -168,7 +168,6 @@ class Server {
                             var localsVals:Array<Dynamic> = [];
                             for (varName in stackVariables) {
                                 if (varName == "this") {
-                                    var inner = new Map<String, Dynamic>();
                                     var value:Dynamic = Debugger.getStackVariableValue(threadId, frameId, "this", false);
                                     var id = references.create(VariablesPrinter.resolveValue(value));
                                     m.result.push({id:id, name:ScopeId.members});
@@ -194,7 +193,6 @@ class Server {
                             var value:Value = references.get(refId);
                             var vars = VariablesPrinter.getInnerVariables(value, m.params.start, m.params.count);
 
-                            //trace(vars);
                             for (v in vars) {
                                 var varInfo:VarInfo = {
                                     name:v.name,
@@ -227,10 +225,17 @@ class Server {
                     case Protocol.SetVariable if (currentThreadInfo != null):
                         stateMutex.acquire();
                         var name = m.params.expr;
-                        var value = m.params.value;
+                        var value:String = m.params.value;
+                        var stringPattern = ~/"(.*?)"/;
+                        if (stringPattern.match(value)) {
+                            value = stringPattern.matched(1);
+                        }
                         var frameId = currentThreadInfo.stack.length - 3; // top of stack, minus cpp.vm.Debugger and jsonrpc.Server frames
                         var result = Debugger.setStackVariableValue(currentThreadInfo.number, frameId, name, value, false);
-                        m.result = {value: Std.string(result)};
+                        m.result = {value: switch (VariablesPrinter.resolveValue(result)) {
+                            case Single(val): val;
+                            case _: Std.string(result);
+                        }};
                         stateMutex.release();
 
                     case Protocol.Evaluate:
@@ -275,7 +280,6 @@ class Server {
 
                         stateMutex.acquire();
                         if (currentThreadInfo != null) {
-                            var frameNumber = currentThreadInfo.stack.length - 1;
                             var i = 0;
                             for (s in currentThreadInfo.stack) {
                                 if (s.fileName == "hxcpp/debug/jsonrpc/Server.hx") break;
