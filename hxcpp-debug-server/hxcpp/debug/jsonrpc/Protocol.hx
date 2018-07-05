@@ -46,6 +46,7 @@ class Protocol {
     static inline var SetVariable = new RequestMethod<{expr:String,value:String},VarInfo>("setVariable");
     static inline var Threads = new RequestMethod<{}, Array<ThreadInfo>>("threads");
     static inline var Evaluate = new RequestMethod<{expr:String, frameId:Int},VarInfo>("evaluate");
+    static inline var Completions = new RequestMethod<CompletionsArguments,Array<CompletionItem>>("completions");
     static inline var SetExceptionOptions = new RequestMethod<Array<String>,Void>("setExceptionOptions");
 
     static inline var BreakpointStop = new NotificationMethod<{threadId:Int}>("breakpointStop");
@@ -123,3 +124,17 @@ typedef ThreadInfo = {
 }
 
 typedef AccessExpr = String;
+
+typedef CompletionsArguments = {
+    @:optional var frameId:Int;
+    var text:String;
+    var column:Int;
+    @:optional var line:Int;
+}
+
+typedef CompletionItem = {
+    var label:String;
+    @:optional var text:String;
+    @:optional var start:Int;
+    @:optional var length:Int;
+};

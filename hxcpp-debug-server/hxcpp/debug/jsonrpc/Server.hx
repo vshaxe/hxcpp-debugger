@@ -268,6 +268,24 @@ class Server {
                 }};
                 stateMutex.release();
 
+            case Protocol.Completions if (currentThreadInfo != null):
+                stateMutex.acquire();
+                var frameId = currentThreadInfo.stack.length - 3; // top of stack, minus cpp.vm.Debugger and jsonrpc.Server frames
+                var completions:Array<CompletionItem> = [];
+                var variables = Debugger.getStackVariables(currentThreadInfo.number, frameId, false);
+                for (variable in variables) {
+                    completions.push({label: variable});
+                }
+                // TODO: this can cause a "critical error in debugger thread" for some reason?
+                /*if (variables.indexOf("this") != -1) {
+                    var thisReference = Debugger.getStackVariableValue(currentThreadInfo.number, frameId, "this", false);
+                    for (field in Type.getInstanceFields(thisReference)) {
+                        completions.push({label: field});
+                    }
+                }*/
+                m.result = completions;
+                stateMutex.release();
+
             case Protocol.Evaluate:
                 var expr = m.params.expr;
 
