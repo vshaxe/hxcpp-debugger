@@ -220,10 +220,10 @@ class Server {
 
                     for (v in vars) {
                         var varInfo:VarInfo = {
-                            name:v.name,
-                            type:v.type,
-                            value:"",
-                            variablesReference:0,
+                            name: v.name,
+                            type: v.type,
+                            value: "",
+                            variablesReference: 0,
                         }
                         switch (v.value) {
                             case NameValueList(names, values):
@@ -233,11 +233,13 @@ class Server {
                                 var refId = references.create(v.value);
                                 varInfo.variablesReference = refId;
                                 varInfo.indexedVariables = length;
+                                varInfo.value = Std.string(value);
 
-                            case StringIndexed(value, names, _):
+                            case StringIndexed(value, printedValue, names, _):
                                 var refId = references.create(v.value);
                                 varInfo.variablesReference = refId;
                                 varInfo.namedVariables = names.length;
+                                varInfo.value = printedValue;
 
                             case Single(value):
                                 varInfo.value = value;
@@ -287,11 +289,13 @@ class Server {
                                 var refId = references.create(v.value);
                                 m.result.variablesReference = refId;
                                 m.result.indexedVariables = length;
+                                m.result.value = Std.string(value);
 
-                            case StringIndexed(value, names, _):
+                            case StringIndexed(value, printedValue, names, _):
                                 var refId = references.create(v.value);
                                 m.result.variablesReference = refId;
                                 m.result.namedVariables = names.length;
+                                m.result.value = printedValue;
 
                             case Single(value):
                                 m.result.value = value;
