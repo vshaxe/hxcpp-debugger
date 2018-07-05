@@ -32,8 +32,8 @@
 		"url": "https://github.com/vshaxe/hxcpp-debugger/issues"
 	},
 	"dependencies": {
-		"vscode-debugprotocol": "1.8.0-pre.3",
-		"vscode-debugadapter": "1.8.0-pre.4"
+		"vscode-debugprotocol": "1.19.0",
+		"vscode-debugadapter": "1.19.0"
 	},
 	"scripts": {
 		"vscode:prepublish": "haxe build.hxml"

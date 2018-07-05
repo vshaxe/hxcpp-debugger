@@ -71,7 +71,6 @@ class Adapter extends adapter.DebugSession {
 
         var server = Net.createServer(onConnected);
         server.listen(6972, function() {
-            var port = server.address().port;
             var args = [];
             var haxeProcess = ChildProcess.spawn(executable, args, {stdio: Pipe, cwd: Path.directory(executable)});
             haxeProcess.stdout.on(ReadableEvent.Data, onStdout);
@@ -88,19 +87,15 @@ class Adapter extends adapter.DebugSession {
         sendEvent(new adapter.DebugSession.OutputEvent(data.toString("utf-8"), stderr));
     }
 
-    //var stopContext:StopContext;
-
     function onEvent<P>(type:NotificationMethod<P>, data:P) {
         switch (type) {
             case Protocol.PauseStop:
                 sendEvent(new adapter.DebugSession.StoppedEvent("pause", data.threadId));
 
             case Protocol.BreakpointStop:
-                //stopContext = new StopContext(connection);
                 sendEvent(new adapter.DebugSession.StoppedEvent("breakpoint", data.threadId));
 
             case Protocol.ExceptionStop:
-                //stopContext = new StopContext(connection);
                 var evt = new adapter.DebugSession.StoppedEvent("exception", 0);
                 evt.body.text = data.text;
                 sendEvent(evt);
@@ -155,13 +150,11 @@ class Adapter extends adapter.DebugSession {
     }
 
     override function setVariableRequest(response:SetVariableResponse, args:SetVariableArguments) {
-        /*
-        stopContext.setVariable(args.variablesReference, args.name, args.value, function(varInfo) {
+        connection.sendCommand(Protocol.SetVariable, {expr:args.name, value:args.value}, function(error, varInfo) {
             if (varInfo != null)
                 response.body = {value: varInfo.value};
             sendResponse(response);
         });
-        */
     }
 
     override function stepInRequest(response:StepInResponse, args:StepInArguments) {
@@ -207,10 +200,12 @@ class Adapter extends adapter.DebugSession {
     }
 
     override function threadsRequest(response:ThreadsResponse) {
-        connection.sendCommand(Protocol.Threads, null, function(error, result) {
-            response.body = {threads:result};
-            sendResponse(response);
-        });
+        if (connection != null) {
+            connection.sendCommand(Protocol.Threads, null, function(error, result) {
+                response.body = {threads:result};
+                sendResponse(response);
+            });
+        }
     }
 
     override function pauseRequest(response:PauseResponse, args:PauseArguments) {
