@@ -1,3 +1,3 @@
-### 1.0.0 (to be released)
+### 1.0.0 (July 5, 2018)
 
 - initial release
