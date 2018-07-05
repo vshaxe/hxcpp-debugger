@@ -81,8 +81,7 @@ class VariablesPrinter {
                 Single('"$value"');
 
             case TEnum(e):
-                //TODO
-                Single(value);
+                Single(Std.string(value));
 
             case TObject:
                 StringIndexed(value, Reflect.fields(value), false, propGet);
