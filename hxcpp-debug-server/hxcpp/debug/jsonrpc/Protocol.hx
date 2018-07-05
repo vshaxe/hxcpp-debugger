@@ -16,8 +16,13 @@ typedef Message = {
     @:optional var error:Error;
 }
 
+@:enum
+abstract ErrorCode(Int) to Int {
+    var internal = 500;
+}
+
 typedef Error = {
-    var code:Int;
+    var code:ErrorCode;
     var message:String;
 }
 

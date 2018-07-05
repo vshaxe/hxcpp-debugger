@@ -30,7 +30,6 @@ class Adapter extends adapter.DebugSession {
         sendEvent(new adapter.DebugSession.InitializedEvent());
         response.body.supportsSetVariable = true;
         response.body.supportsValueFormattingOptions = false;
-        response.body.supportsConfigurationDoneRequest = true;
         sendResponse(response);
         postLaunchActions = [];
     }
@@ -58,8 +57,11 @@ class Adapter extends adapter.DebugSession {
             socket.on(SocketEvent.Error, function (error) trace('Socket error: $error'));
 
             executePostLaunchActions(function() {
-                continueRequest(cast response, {threadId:0});
-                connection.onEvent = onEvent;
+                connection.sendCommand(Protocol.Continue, {threadId:0},
+                    function(_,_) {
+                        sendResponse(response);
+                        connection.onEvent = this.onEvent;
+                    });
             });
         }
 
@@ -76,10 +78,6 @@ class Adapter extends adapter.DebugSession {
             haxeProcess.stderr.on(ReadableEvent.Data, onStderr);
             haxeProcess.on(ChildProcessEvent.Exit, onExit);
         });
-    }
-
-    override function configurationDoneRequest(response:ConfigurationDoneResponse, args:ConfigurationDoneArguments) {
-        sendResponse(response);
     }
 
     function onStdout(data:Buffer) {
