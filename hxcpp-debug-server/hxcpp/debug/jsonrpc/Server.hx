@@ -189,6 +189,7 @@ class Server {
                 m.result = [];
 
                 stateMutex.acquire();
+                //references.clear();
                 if (currentThreadInfo != null) {
                     var threadId:Int = currentThreadInfo.number;
                     var frameId:Int = m.params.frameId;
@@ -292,17 +293,19 @@ class Server {
             case Protocol.Evaluate:
                 var expr = m.params.expr;
 
+                m.result = {
+                    name:expr,
+                    value:"",
+                    type:"",
+                    variablesReference:0
+                };
+
                 stateMutex.acquire();
                 if (currentThreadInfo != null) {
                     var threadId = currentThreadInfo.number;
                     var frameId = m.params.frameId;
                     var v = VariablesPrinter.evaluate(expr, threadId, frameId);
-                    m.result = {
-                        name:expr,
-                        value:"",
-                        type:"",
-                        variablesReference:0
-                    };
+                   
                     if (v != null) {
                         m.result.type = v.type;
                         switch (v.value) {
@@ -398,7 +401,6 @@ class Server {
             case Debugger.THREAD_STOPPED:
                 stateMutex.acquire();
                 currentThreadInfo = Debugger.getThreadInfo(threadNumber, false);
-                references.clear();
                 stateMutex.release();
 
                 if (currentThreadInfo.status == cpp.vm.ThreadInfo.STATUS_STOPPED_BREAK_IMMEDIATE) {

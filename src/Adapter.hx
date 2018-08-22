@@ -23,6 +23,8 @@ class Adapter extends adapter.DebugSession {
             msg += " " + infos.customParams.join(" ");
         }
         msg += "\n";
+        var maxMessageSize = 1000;
+        if (msg.length >= maxMessageSize) msg = msg.substr(0, maxMessageSize) + "...\n";
         sendEvent(new adapter.DebugSession.OutputEvent(msg));
     }
 
@@ -162,21 +164,21 @@ class Adapter extends adapter.DebugSession {
     override function stepInRequest(response:StepInResponse, args:StepInArguments) {
         connection.sendCommand(Protocol.StepIn, {}, function(_,_) {
             sendResponse(response);
-            sendEvent(new adapter.DebugSession.StoppedEvent("step", 0));
+            //sendEvent(new adapter.DebugSession.StoppedEvent("step", 0));
         });
     }
 
     override function stepOutRequest(response:StepOutResponse, args:StepOutArguments) {
         connection.sendCommand(Protocol.StepOut, {}, function(_,_) {
             sendResponse(response);
-            sendEvent(new adapter.DebugSession.StoppedEvent("step", 0));
+            //sendEvent(new adapter.DebugSession.StoppedEvent("step", 0));
         });
     }
 
     override function nextRequest(response:NextResponse, args:NextArguments) {
         connection.sendCommand(Protocol.Next, {}, function(_,_) {
             sendResponse(response);
-            sendEvent(new adapter.DebugSession.StoppedEvent("step", 0));
+            //sendEvent(new adapter.DebugSession.StoppedEvent("step", 0));
         });
     }
 
