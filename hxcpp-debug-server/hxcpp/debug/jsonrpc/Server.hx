@@ -179,7 +179,8 @@ class Server {
 
 			case Protocol.Threads:
 				stateMutex.acquire();
-				m.result = [for (tid in threads.keys()) {id: tid, name: threads[tid]}];
+				m.result = [for (tid in threads.keys()) {id: tid, name: threads[tid]}
+				];
 				stateMutex.release();
 
 			case Protocol.GetScopes:
@@ -301,7 +302,7 @@ class Server {
 					var threadId = currentThreadInfo.number;
 					var frameId = m.params.frameId;
 					var v = VariablesPrinter.evaluate(expr, threadId, frameId);
-					
+
 					if (v != null) {
 						m.result.type = v.type;
 						switch (v.value) {
@@ -325,6 +326,7 @@ class Server {
 						}
 					}
 				}
+				trace(m.result);
 				stateMutex.release();
 
 			case Protocol.StackTrace:

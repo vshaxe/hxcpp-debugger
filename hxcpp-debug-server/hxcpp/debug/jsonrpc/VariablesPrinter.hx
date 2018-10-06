@@ -1,5 +1,8 @@
 package hxcpp.debug.jsonrpc;
 
+import hxcpp.debug.jsonrpc.eval.Parser;
+import hxcpp.debug.jsonrpc.eval.Interp;
+
 enum VarType {
 	TypeNull;
 	TypeInt;
@@ -77,7 +80,7 @@ class VariablesPrinter {
 	public static function resolveValue(value:Dynamic):Value {
 		return switch (Type.typeof(value)) {
 			case TNull, TUnknown, TInt, TFloat, TBool, TFunction:
-				Single(value);
+				Single(Std.string(value));
 
 			case TClass(String):
 				Single('"$value"');
@@ -118,6 +121,30 @@ class VariablesPrinter {
 	}
 
 	public static function evaluate(expression:String, threadId:Int, frameId:Int):Null<Variable> {
+		var result = null;
+		var fields = expression.split(".");
+		var stackVariables = cpp.vm.Debugger.getStackVariables(threadId, frameId, false);
+		// cpp.vm.Debugger.getStackVariableValue(threadId, frameId, f, false);
+		var parser = new Parser();
+		var ast = parser.parseString(expression);
+		var interp = new Interp();
+		for (vName in stackVariables) {
+			interp.variables.set(vName, cpp.vm.Debugger.getStackVariableValue(threadId, frameId, vName, false));
+		}
+		try {
+			var evalRes:Dynamic = interp.execute(ast);
+			result = {
+				name: expression,
+				value: resolveValue(evalRes),
+				type: getType(evalRes)
+			};
+			trace(result);
+		} catch (e:Dynamic) {}
+
+		return result;
+	}
+
+	public static function evaluate1(expression:String, threadId:Int, frameId:Int):Null<Variable> {
 		var result = null;
 		var fields = expression.split(".");
 		var stackVariables = cpp.vm.Debugger.getStackVariables(threadId, frameId, false);

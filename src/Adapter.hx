@@ -160,21 +160,21 @@ class Adapter extends adapter.DebugSession {
 	override function stepInRequest(response:StepInResponse, args:StepInArguments) {
 		connection.sendCommand(Protocol.StepIn, {}, function(_, _) {
 			sendResponse(response);
-			//sendEvent(new adapter.DebugSession.StoppedEvent("step", 0));
+			// sendEvent(new adapter.DebugSession.StoppedEvent("step", 0));
 		});
 	}
 
 	override function stepOutRequest(response:StepOutResponse, args:StepOutArguments) {
 		connection.sendCommand(Protocol.StepOut, {}, function(_, _) {
 			sendResponse(response);
-			//sendEvent(new adapter.DebugSession.StoppedEvent("step", 0));
+			// sendEvent(new adapter.DebugSession.StoppedEvent("step", 0));
 		});
 	}
 
 	override function nextRequest(response:NextResponse, args:NextArguments) {
 		connection.sendCommand(Protocol.Next, {}, function(_, _) {
 			sendResponse(response);
-			//sendEvent(new adapter.DebugSession.StoppedEvent("step", 0));
+			// sendEvent(new adapter.DebugSession.StoppedEvent("step", 0));
 		});
 	}
 
@@ -239,7 +239,12 @@ class Adapter extends adapter.DebugSession {
 			]
 		}
 		connection.sendCommand(Protocol.SetBreakpoints, params, function(error, result) {
-			response.body = {breakpoints: [for (bp in result) {verified: true, id: bp.id}]};
+			response.body = {
+				breakpoints: [
+					for (bp in result)
+						{verified: true, id: bp.id}
+				]
+			};
 			sendResponse(response);
 			if (callback != null)
 				callback();
@@ -277,7 +282,7 @@ class Adapter extends adapter.DebugSession {
 	override function completionsRequest(response:CompletionsResponse, args:CompletionsArguments) {
 		connection.sendCommand(Protocol.Completions, args, function(error, result) {
 			if (result != null)
-				response.body = {targets: result};
+				response.body = {targets: cast result};
 			sendResponse(response);
 		});
 	}
