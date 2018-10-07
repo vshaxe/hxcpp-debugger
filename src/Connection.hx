@@ -63,7 +63,7 @@ class Connection {
 	public dynamic function onEvent<P>(type:NotificationMethod<P>, data:P) {}
 
 	function onMessage<T>(msg:Message) {
-		// trace('GOT MESSAGE ${haxe.Json.stringify(msg)}');
+		trace('GOT MESSAGE ${haxe.Json.stringify(msg)}');
 		if (msg.id == null) {
 			onEvent(new NotificationMethod(msg.method), msg.params);
 		} else {
@@ -84,7 +84,7 @@ class Connection {
 			method: name,
 			params: params
 		});
-		// trace('Sending command: $cmd');
+		trace('Sending command: $cmd');
 		var body = Buffer.from(cmd, "utf-8");
 		var header = Buffer.alloc(4);
 		if (callback != null)

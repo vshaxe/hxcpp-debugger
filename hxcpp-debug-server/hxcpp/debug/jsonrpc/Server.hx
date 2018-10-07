@@ -41,6 +41,7 @@ private class References {
 class Server {
 	var host:String;
 	var port:Int;
+	var listening:sys.net.Socket;
 	var socket:sys.net.Socket;
 	var stateMutex:Mutex;
 	var socketMutex:Mutex;
@@ -52,6 +53,7 @@ class Server {
 	var started:Bool;
 	var path2file:Map<String, String>;
 	var file2path:Map<String, String>;
+	var mainThread:Thread;
 
 	static var startQueue:Deque<Bool> = new Deque<Bool>();
 	@:keep static var inst = {
@@ -72,12 +74,15 @@ class Server {
 		threads = new Map<Int, String>();
 		path2file = new Map<String, String>();
 		file2path = new Map<String, String>();
+		mainThread = Thread.current();
 
 		Debugger.enableCurrentThreadDebugging(false);
 		if (connect()) {
 			Thread.create(debuggerThreadMain);
 			startQueue.pop(true);
 			Debugger.enableCurrentThreadDebugging(true);
+		} else {
+			waitForAttach();
 		}
 	}
 
@@ -101,13 +106,57 @@ class Server {
 		}
 		closeSocket();
 		return false;
-		/*
-			while (true) {
+	}
 
-				log("Trying again in 3 seconds.");
-				Sys.sleep(3);
-			}
-		 */
+	function waitForAttach() {
+		var onMainThread = new haxe.Timer(500);
+		onMainThread.run = function() {
+			var callOnMainThread:Void->Void = Thread.readMessage(false);
+			if (callOnMainThread == null)
+				return;
+			callOnMainThread();
+		}
+		Thread.create(createListeningSocket);
+	}
+
+	function createListeningSocket() {
+		if (listening == null) {
+			var socket:sys.net.Socket = new sys.net.Socket();
+			socket.bind(new sys.net.Host("localhost"), 6972);
+			socket.listen(1);
+			listening = socket;
+		}
+		while (true) {
+			var connectedSocket = listening.accept();
+			mainThread.sendMessage(function() {
+				if (this.socket == null) {
+					this.socket = connectedSocket;
+					onDebuggerAttached();
+				}
+			});
+		}
+	}
+
+	function onDebuggerAttached() {
+		Debugger.enableCurrentThreadDebugging(false);
+		Thread.create(debuggerThreadMain);
+		startQueue.pop(true);
+		Debugger.enableCurrentThreadDebugging(true);
+	}
+
+	function onDebuggerDetached() {
+		closeSocket();
+		Debugger.setEventNotificationHandler(function(_, _, _, _, _, _, _) {});
+		stateMutex.acquire();
+		if (currentThreadInfo != null) {
+			var threadId:Int = currentThreadInfo.number;
+			currentThreadInfo = null;
+			Debugger.continueThreads(threadId, 1);
+			mainThread.sendMessage(function() {
+				Debugger.enableCurrentThreadDebugging(false);
+			});
+		}
+		stateMutex.release();
 	}
 
 	private function debuggerThreadMain() {
@@ -126,17 +175,31 @@ class Server {
 		startQueue.push(true);
 
 		while (true) {
-			var m = readMessage();
+			var m = try {
+				readMessage();
+			} catch (e:Dynamic) {
+				onDebuggerDetached();
+				return;
+			}
+
 			try {
 				processMessage(m);
 			} catch (e:Dynamic) {
 				m.error = {code: ErrorCode.internal, message: Std.string(e)};
 			}
-			sendResponse(m);
+			try {
+				sendResponse(m);
+			} catch (e:Dynamic) {
+				onDebuggerDetached();
+				return;
+			}
 		}
 	}
 
 	private function readMessage():Message {
+		if (socket == null)
+			return null;
+
 		var length:Int = socket.input.readInt32();
 		// trace('Message Length: $length');
 		var rawString = socket.input.readString(length);
@@ -144,6 +207,9 @@ class Server {
 	}
 
 	private function sendResponse(m:Message) {
+		if (socket == null)
+			return;
+
 		socketMutex.acquire();
 		var serialized:String = haxe.Json.stringify(m);
 		socket.output.writeInt32(serialized.length);
@@ -179,7 +245,9 @@ class Server {
 
 			case Protocol.Threads:
 				stateMutex.acquire();
-				m.result = [for (tid in threads.keys()) {id: tid, name: threads[tid]}
+				m.result = [
+					for (tid in threads.keys())
+						{id: tid, name: threads[tid]}
 				];
 				stateMutex.release();
 
@@ -326,7 +394,6 @@ class Server {
 						}
 					}
 				}
-				trace(m.result);
 				stateMutex.release();
 
 			case Protocol.StackTrace:

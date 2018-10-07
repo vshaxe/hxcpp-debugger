@@ -138,7 +138,6 @@ class VariablesPrinter {
 				value: resolveValue(evalRes),
 				type: getType(evalRes)
 			};
-			trace(result);
 		} catch (e:Dynamic) {}
 
 		return result;

@@ -83,7 +83,7 @@
 						"properties": {
 							"request": {
 								"type": "string",
-								"description": "Attaches to a swf which is launched manually",
+								"description": "Attaches to an executable which is launched manually",
 								"default": "attach"
 							},
 							"receiveAdapterOutput": {

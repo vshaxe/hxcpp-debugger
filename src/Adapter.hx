@@ -1,3 +1,4 @@
+import js.node.net.Socket;
 import haxe.io.Path;
 import protocol.debug.Types;
 import js.node.Buffer;
@@ -76,6 +77,27 @@ class Adapter extends adapter.DebugSession {
 			haxeProcess.stderr.on(ReadableEvent.Data, onStderr);
 			haxeProcess.on(ChildProcessEvent.Exit, onExit);
 		});
+	}
+
+	override function attachRequest(response:AttachResponse, args:AttachRequestArguments):Void {
+		var socket:Socket;
+		socket = Net.connect({port: 6972}, function() {
+			trace('connected to server!');
+			connection = new Connection(socket);
+			socket.on(SocketEvent.Error, function(error) trace('Socket error: $error'));
+
+			executePostLaunchActions(function() {
+				connection.sendCommand(Protocol.Continue, {threadId: 0}, function(_, _) {
+					sendResponse(response);
+					connection.onEvent = this.onEvent;
+				});
+			});
+		});
+
+		function onExit() {
+			sendEvent(new adapter.DebugSession.TerminatedEvent(false));
+		}
+		socket.on(SocketEvent.End, onExit);
 	}
 
 	function onStdout(data:Buffer) {
