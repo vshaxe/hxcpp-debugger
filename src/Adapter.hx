@@ -31,6 +31,7 @@ class Adapter extends adapter.DebugSession {
 		response.body.supportsSetVariable = true;
 		response.body.supportsValueFormattingOptions = false;
 		response.body.supportsCompletionsRequest = true;
+		response.body.supportsConditionalBreakpoints = true;
 		sendResponse(response);
 		postLaunchActions = [];
 	}

@@ -6,10 +6,20 @@ import cpp.vm.Thread;
 import cpp.vm.Mutex;
 import cpp.vm.Debugger;
 import cpp.vm.Deque;
+import hxcpp.debug.jsonrpc.eval.Parser;
+import hxcpp.debug.jsonrpc.eval.Interp;
+import hxcpp.debug.jsonrpc.eval.Expr;
 
 @:enum abstract ScopeId(String) to String {
 	var members = "Members";
 	var locals = "Locals";
+}
+
+typedef BreakpointInfo = {
+	var id:Int;
+	var line:Int;
+	@:optional var column:Int;
+	@:optional var condition:Expr;
 }
 
 private class References {
@@ -48,12 +58,13 @@ class Server {
 	var currentThreadInfo:cpp.vm.ThreadInfo;
 	var scopes:Map<ScopeId, Array<String>>;
 	var threads:Map<Int, String>;
-	var breakpoints:Map<String, Array<Int>>;
+	var breakpoints:Map<String, Array<BreakpointInfo>>;
 	var references:References;
 	var started:Bool;
 	var path2file:Map<String, String>;
 	var file2path:Map<String, String>;
 	var mainThread:Thread;
+	var parser:Parser;
 
 	static var startQueue:Deque<Bool> = new Deque<Bool>();
 	@:keep static var inst = {
@@ -69,12 +80,13 @@ class Server {
 		stateMutex = new Mutex();
 		socketMutex = new Mutex();
 		scopes = new Map<ScopeId, Array<String>>();
-		breakpoints = new Map<String, Array<Int>>();
+		breakpoints = new Map<String, Array<BreakpointInfo>>();
 		references = new References();
 		threads = new Map<Int, String>();
 		path2file = new Map<String, String>();
 		file2path = new Map<String, String>();
 		mainThread = Thread.current();
+		parser = new Parser();
 
 		Debugger.enableCurrentThreadDebugging(false);
 		if (connect()) {
@@ -228,14 +240,24 @@ class Server {
 					breakpoints[params.file] = [];
 
 				for (rm in breakpoints[params.file]) {
-					Debugger.deleteBreakpoint(rm);
+					Debugger.deleteBreakpoint(rm.id);
 				}
 				for (b in params.breakpoints) {
-					var id = Debugger.addFileLineBreakpoint(path2file[params.file.toUpperCase()], b.line);
-					result.push(id);
+					var bInfo:BreakpointInfo = {id: 0, line: b.line};
+					if (b.condition != null) {
+						try {
+							var ast:Expr = parser.parseString(b.condition);
+							bInfo.condition = ast;
+						} catch (e:Dynamic) {
+							m.error = {code: ErrorCode.wrongRequest, message: "can't parse condition"};
+							continue;
+						}
+					}
+					bInfo.id = Debugger.addFileLineBreakpoint(path2file[params.file.toUpperCase()], bInfo.line);
+					result.push(bInfo);
 				}
 				breakpoints[params.file] = result;
-				m.result = result;
+				m.result = [for (b in result) b.id];
 
 			case Protocol.Pause:
 				Debugger.breakNow(true);
@@ -341,7 +363,7 @@ class Server {
 
 			case Protocol.Completions if (currentThreadInfo != null):
 				stateMutex.acquire();
-				var frameId = currentThreadInfo.stack.length - 3; // top of stack, minus cpp.vm.Debugger and jsonrpc.Server frames
+				var frameId = getTopFrame();
 				var completions:Array<CompletionItem> = [];
 				var variables = Debugger.getStackVariables(currentThreadInfo.number, frameId, false);
 				for (variable in variables) {
@@ -468,6 +490,20 @@ class Server {
 				if (currentThreadInfo.status == cpp.vm.ThreadInfo.STATUS_STOPPED_BREAK_IMMEDIATE) {
 					sendEvent(Protocol.PauseStop, {threadId: threadNumber});
 				} else if (currentThreadInfo.status == cpp.vm.ThreadInfo.STATUS_STOPPED_BREAKPOINT) {
+					var bId = currentThreadInfo.breakpoint;
+					var path = file2path[fileName.toUpperCase()];
+					var thisFileBreakpoints = breakpoints[path];
+					for (b in thisFileBreakpoints) {
+						if (b.id != bId)
+							continue;
+
+						if (b.condition != null) {
+							if (!isConditionPass(b.condition, threadNumber)) {
+								Debugger.continueThreads(threadNumber, 1);
+								break;
+							}
+						}
+					}
 					sendEvent(Protocol.BreakpointStop, {threadId: threadNumber});
 				} else {
 					sendEvent(Protocol.ExceptionStop, {text: currentThreadInfo.criticalErrorDescription});
@@ -477,7 +513,27 @@ class Server {
 		}
 	}
 
-	private function closeSocket() {
+	function isConditionPass(condition:Expr, threadNumber:Int):Bool {
+		var frameId = getTopFrame();
+		var stackVariables = cpp.vm.Debugger.getStackVariables(threadNumber, frameId, false);
+		var interp = new Interp();
+		for (vName in stackVariables) {
+			interp.variables.set(vName, cpp.vm.Debugger.getStackVariableValue(threadNumber, frameId, vName, false));
+		}
+		try {
+			var evalRes:Bool = interp.execute(condition);
+			return evalRes;
+		} catch (e:Dynamic) {}
+
+		return false;
+	}
+
+	function getTopFrame():Int {
+		// top of stack, minus cpp.vm.Debugger and jsonrpc.Server frames
+		return (currentThreadInfo != null) ? currentThreadInfo.stack.length - 3 : -1;
+	}
+
+	function closeSocket() {
 		if (socket != null) {
 			socket.close();
 			socket = null;

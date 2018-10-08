@@ -21,6 +21,7 @@ typedef Message = {
 @:enum
 abstract ErrorCode(Int) to Int {
 	var internal = 500;
+	var wrongRequest = 422;
 }
 
 typedef Error = {
@@ -58,7 +59,7 @@ class Protocol {
 
 typedef SetBreakpointsParams = {
 	var file:String;
-	var breakpoints:Array<{line:Int, ?column:Int}>;
+	var breakpoints:Array<{line:Int, ?column:Int, ?condition:String}>;
 }
 
 typedef SetBreakpointParams = {
