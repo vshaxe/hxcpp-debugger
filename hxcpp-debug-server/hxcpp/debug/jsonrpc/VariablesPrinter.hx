@@ -120,18 +120,11 @@ class VariablesPrinter {
 		}
 	}
 
-	public static function evaluate(expression:String, threadId:Int, frameId:Int):Null<Variable> {
+	public static function evaluate(parser:Parser, expression:String, threadId:Int, frameId:Int):Null<Variable> {
 		var result = null;
-		var fields = expression.split(".");
-		var stackVariables = cpp.vm.Debugger.getStackVariables(threadId, frameId, false);
-		// cpp.vm.Debugger.getStackVariableValue(threadId, frameId, f, false);
-		var parser = new Parser();
-		var ast = parser.parseString(expression);
-		var interp = new Interp();
-		for (vName in stackVariables) {
-			interp.variables.set(vName, cpp.vm.Debugger.getStackVariableValue(threadId, frameId, vName, false));
-		}
 		try {
+			var interp = initInterp(threadId, frameId, true);
+			var ast = parser.parseString(expression);
 			var evalRes:Dynamic = interp.execute(ast);
 			result = {
 				name: expression,
@@ -143,39 +136,24 @@ class VariablesPrinter {
 		return result;
 	}
 
-	public static function evaluate1(expression:String, threadId:Int, frameId:Int):Null<Variable> {
-		var result = null;
-		var fields = expression.split(".");
+	public static function initInterp(threadId:Int, frameId:Int, exposeMembers:Bool = false):Interp {
 		var stackVariables = cpp.vm.Debugger.getStackVariables(threadId, frameId, false);
-		if (stackVariables.indexOf(fields[0]) == -1) {
-			// try with `this.`
-			fields.unshift("this");
-		}
-		var root:Dynamic = null;
-		var current = null;
-		for (f in fields) {
-			if (f.indexOf("[") >= 0) {
-				break; // TODO
-			} else {
-				if (root == null) {
-					root = cpp.vm.Debugger.getStackVariableValue(threadId, frameId, f, false);
-					current = root;
-				} else {
-					current = propGet(current, f);
-				}
-				if (current == null) {
-					result = null;
-					break; // can't evaluate
-				}
-
-				result = {
-					name: expression,
-					value: VariablesPrinter.resolveValue(current),
-					type: VariablesPrinter.getType(current)
+		var interp = new Interp();
+		for (vName in stackVariables) {
+			var value = cpp.vm.Debugger.getStackVariableValue(threadId, frameId, vName, false);
+			if (exposeMembers) {
+				if (vName == "this") {
+					var members = Reflect.fields(value);
+					for (mName in members) {
+						var mValue = propGet(value, mName);
+						interp.variables.set(mName, mValue);
+					}
 				}
 			}
+			interp.variables.set(vName, value);
 		}
-		return result;
+
+		return interp;
 	}
 
 	static function getClassProps(c:Class<Dynamic>) {

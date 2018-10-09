@@ -64,6 +64,7 @@ class Server {
 	var path2file:Map<String, String>;
 	var file2path:Map<String, String>;
 	var mainThread:Thread;
+	var interp:Interp;
 	var parser:Parser;
 
 	static var startQueue:Deque<Bool> = new Deque<Bool>();
@@ -391,7 +392,7 @@ class Server {
 				if (currentThreadInfo != null) {
 					var threadId = currentThreadInfo.number;
 					var frameId = m.params.frameId;
-					var v = VariablesPrinter.evaluate(expr, threadId, frameId);
+					var v = VariablesPrinter.evaluate(parser, expr, threadId, frameId);
 
 					if (v != null) {
 						m.result.type = v.type;
@@ -497,10 +498,11 @@ class Server {
 						if (b.id != bId)
 							continue;
 
+						interp = VariablesPrinter.initInterp(threadNumber, getTopFrame(), true);
 						if (b.condition != null) {
-							if (!isConditionPass(b.condition, threadNumber)) {
+							if (!isConditionPass(b.condition)) {
 								Debugger.continueThreads(threadNumber, 1);
-								break;
+								return;
 							}
 						}
 					}
@@ -513,13 +515,7 @@ class Server {
 		}
 	}
 
-	function isConditionPass(condition:Expr, threadNumber:Int):Bool {
-		var frameId = getTopFrame();
-		var stackVariables = cpp.vm.Debugger.getStackVariables(threadNumber, frameId, false);
-		var interp = new Interp();
-		for (vName in stackVariables) {
-			interp.variables.set(vName, cpp.vm.Debugger.getStackVariableValue(threadNumber, frameId, vName, false));
-		}
+	function isConditionPass(condition:Expr):Bool {
 		try {
 			var evalRes:Bool = interp.execute(condition);
 			return evalRes;
