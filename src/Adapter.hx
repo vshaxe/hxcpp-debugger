@@ -208,7 +208,7 @@ class Adapter extends adapter.DebugSession {
 				r.push({
 					id: info.id,
 					name: info.name,
-					source: {path: info.source},
+					source: {path: "file:///" + info.source},
 					line: info.line,
 					column: info.column,
 					endLine: info.endLine,
