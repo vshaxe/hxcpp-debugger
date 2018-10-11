@@ -248,8 +248,9 @@ class Adapter extends adapter.DebugSession {
 	}
 
 	function doSetBreakpoints(response:SetBreakpointsResponse, args:SetBreakpointsArguments, callback:Null<Void->Void>) {
+		var path = StringTools.replace(args.source.path, "file:///", "");
 		var params:SetBreakpointsParams = {
-			file: args.source.path,
+			file: path,
 			breakpoints: [
 				for (sbp in args.breakpoints) {
 					var bp:{line:Int, ?column:Int, ?condition:String} = {line: sbp.line};
