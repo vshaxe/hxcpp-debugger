@@ -1,3 +1,4 @@
+import haxe.Json;
 import js.node.net.Socket;
 import haxe.io.Path;
 import protocol.debug.Types;
@@ -208,7 +209,7 @@ class Adapter extends adapter.DebugSession {
 				r.push({
 					id: info.id,
 					name: info.name,
-					source: {path: "file:///" + info.source},
+					source: createSource(info.source),
 					line: info.line,
 					column: info.column,
 					endLine: info.endLine,
@@ -248,7 +249,7 @@ class Adapter extends adapter.DebugSession {
 	}
 
 	function doSetBreakpoints(response:SetBreakpointsResponse, args:SetBreakpointsArguments, callback:Null<Void->Void>) {
-		var path = StringTools.replace(args.source.path, "file:///", "");
+		var path = convertClientPathToDebugger(args.source.path);
 		var params:SetBreakpointsParams = {
 			file: path,
 			breakpoints: [
@@ -309,6 +310,19 @@ class Adapter extends adapter.DebugSession {
 				response.body = {targets: cast result};
 			sendResponse(response);
 		});
+	}
+
+	function createSource(filePath:String):Source {
+		var fileName = "Unknown";
+		var dir = "/";
+		if (filePath != null) {
+			var path = new Path(filePath);
+			fileName = '${path.file}.${path.ext}';
+			dir = path.dir + "\\";
+		} else {
+			return null;
+		}
+		return cast new adapter.DebugSession.Source(fileName, convertDebuggerPathToClient(filePath));
 	}
 
 	static function main() {
