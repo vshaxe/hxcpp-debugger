@@ -106,17 +106,19 @@ class VariablesPrinter {
 				StringIndexed(value, Std.string(value), keys, false, intMapGet);
 
 			case TClass(c):
-				var all = getClassProps(c);
+				var fields = getProps(c);
+				var staticFields = getClassProps(c);
 				var className = Type.getClassName(Type.getClass(value));
 				var dotIndex = className.lastIndexOf(".");
 				if (dotIndex != -1) {
 					className = className.substr(dotIndex + 1);
 				}
 				var printedValue = className + ", " + Std.string(value);
+				var all = fields.concat(staticFields);
 				StringIndexed(value, printedValue, [
 					for (f in all)
-						if (!Reflect.isFunction(propGet(value, f)))
-							f], false, propGet);
+						if (!Reflect.isFunction(propStaticGet(c, value, f)))
+							f], false, propStaticGet.bind(c));
 		}
 	}
 
@@ -141,6 +143,8 @@ class VariablesPrinter {
 		var interp = new Interp();
 		for (vName in stackVariables) {
 			var value = cpp.vm.Debugger.getStackVariableValue(threadId, frameId, vName, false);
+			var klass = Type.getClass(value);
+			interp.variables.set(Type.getClassName(klass), klass);
 			if (exposeMembers) {
 				if (vName == "this") {
 					var members = Reflect.fields(value);
@@ -159,6 +163,19 @@ class VariablesPrinter {
 	static function getClassProps(c:Class<Dynamic>) {
 		var fields = [];
 		try {
+			var sflds = Type.getClassFields(c);
+			for (f in sflds) {
+				fields.push('static $f');
+			}
+		} catch (e:Dynamic) {
+			trace('error:$e');
+		}
+		return fields;
+	}
+
+	static function getProps(c:Class<Dynamic>) {
+		var fields = [];
+		try {
 			var flds = Type.getInstanceFields(c);
 			for (f in flds) {
 				fields.push(f);
@@ -166,7 +183,6 @@ class VariablesPrinter {
 		} catch (e:Dynamic) {
 			trace('error:$e');
 		}
-		// TODO: statics
 		return fields;
 	}
 
@@ -234,6 +250,21 @@ class VariablesPrinter {
 			propVal = Reflect.getProperty(value, key);
 			if (propVal == null)
 				propVal = Reflect.field(value, key);
+		} catch (e:Dynamic) {
+			trace(e);
+		}
+		return propVal;
+	}
+
+	public static function propStaticGet(klass:Class<Dynamic>, value:Dynamic, key:String):Dynamic {
+		var propVal = null;
+		try {
+			var parts = key.split(" ");
+			key = parts[parts.length - 1];
+			propVal = Reflect.getProperty(klass, key);
+			if (propVal == null) {
+				propVal = propGet(value, key);
+			}
 		} catch (e:Dynamic) {
 			trace(e);
 		}
