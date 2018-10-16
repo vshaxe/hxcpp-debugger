@@ -40,7 +40,7 @@
 	},
 	"main": "bin/extension.js",
 	"activationEvents": [
-		"onCommand:hxcpp-debugger.setup"
+		"*"
 	],
 	"contributes": {
 		"commands": [
