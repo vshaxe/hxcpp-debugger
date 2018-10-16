@@ -1,4 +1,3 @@
-import js.node.ChildProcess;
 import vscode.*;
 import Vscode.*;
 
@@ -7,8 +6,19 @@ class Extension {
 	@:expose("activate")
 	static function main(context:ExtensionContext) {
 		commands.registerCommand("hxcpp-debugger.setup", function() {
-			ChildProcess.spawn("haxelib", ["dev", "hxcpp-debug-server", context.asAbsolutePath("hxcpp-debug-server")], {});
+			var terminal = window.createTerminal();
+			terminal.sendText("haxelib dev hxcpp-debug-server " + context.asAbsolutePath("hxcpp-debug-server"));
+			terminal.show();
+			context.globalState.update("previousExtensionPath", context.extensionPath);
 		});
-		commands.executeCommand("hxcpp-debugger.setup");
+
+		if (isExtensionPathChanged(context)) {
+			commands.executeCommand("hxcpp-debugger.setup");
+		}
+	}
+
+	static function isExtensionPathChanged(context:ExtensionContext):Bool {
+		var previousPath = context.globalState.get("previousExtensionPath");
+		return (context.extensionPath != previousPath);
 	}
 }
