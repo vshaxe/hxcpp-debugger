@@ -56,3 +56,6 @@ Replace `/bin/application.exe` with the path to your executable file.
     ```
 
 5. Do `haxe build.hxml`
+
+## Usage with lix
+https://github.com/tbrosman/vshaxe-hxcpp-debugger-and-lix
