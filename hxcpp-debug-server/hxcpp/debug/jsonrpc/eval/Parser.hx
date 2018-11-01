@@ -63,15 +63,7 @@ class Parser {
 	var ops:Array<Bool>;
 	var idents:Array<Bool>;
 	var uid:Int = 0;
-	#if hscriptPos
-	var origin:String;
-	var readPos:Int;
-	var tokenMin:Int;
-	var tokenMax:Int;
-	var oldTokenMin:Int;
-	var oldTokenMax:Int;
-	var tokens:List<{min:Int, max:Int, t:Token}>;
-	#else
+
 	static inline var p1 = 0;
 	static inline var readPos = 0;
 	static inline var tokenMin = 0;
@@ -81,7 +73,6 @@ class Parser {
 	var tokens:haxe.ds.GenericStack<Token>;
 	#else
 	var tokens:haxe.FastList<Token>;
-	#end
 	#end
 	public function new() {
 		line = 1;
@@ -111,11 +102,7 @@ class Parser {
 	}
 
 	public inline function error(err, pmin, pmax) {
-		#if hscriptPos
-		throw new Error(err, pmin, pmax, origin, line);
-		#else
 		throw err;
-		#end
 	}
 
 	public function invalidChar(c) {
@@ -125,13 +112,7 @@ class Parser {
 	function initParser(origin) {
 		// line=1 - don't reset line : it might be set manualy
 		preprocStack = [];
-		#if hscriptPos
-		this.origin = origin;
-		readPos = 0;
-		tokenMin = oldTokenMin = 0;
-		tokenMax = oldTokenMax = 0;
-		tokens = new List();
-		#elseif haxe3
+		#if haxe3
 		tokens = new haxe.ds.GenericStack<Token>();
 		#else
 		tokens = new haxe.FastList<Token>();
@@ -170,13 +151,7 @@ class Parser {
 	}
 
 	inline function push(tk) {
-		#if hscriptPos
-		tokens.push({t: tk, min: tokenMin, max: tokenMax});
-		tokenMin = oldTokenMin;
-		tokenMax = oldTokenMax;
-		#else
 		tokens.add(tk);
-		#end
 	}
 
 	inline function ensure(tk) {
@@ -211,47 +186,19 @@ class Parser {
 	}
 
 	inline function expr(e:Expr) {
-		#if hscriptPos
-		return e.e;
-		#else
 		return e;
-		#end
 	}
 
 	inline function pmin(e:Expr) {
-		#if hscriptPos
-		return e.pmin;
-		#else
 		return 0;
-		#end
 	}
 
 	inline function pmax(e:Expr) {
-		#if hscriptPos
-		return e.pmax;
-		#else
 		return 0;
-		#end
 	}
 
 	inline function mk(e, ?pmin, ?pmax):Expr {
-		#if hscriptPos
-		if (e == null)
-			return null;
-		if (pmin == null)
-			pmin = tokenMin;
-		if (pmax == null)
-			pmax = tokenMax;
-		return {
-			e: e,
-			pmin: pmin,
-			pmax: pmax,
-			origin: origin,
-			line: line
-		};
-		#else
 		return e;
-		#end
 	}
 
 	function isBlock(e) {
@@ -329,9 +276,6 @@ class Parser {
 
 	function parseExpr() {
 		var tk = token();
-		#if hscriptPos
-		var p1 = tokenMin;
-		#end
 		switch (tk) {
 			case TId(id):
 				var e = parseStructure(id);
@@ -442,7 +386,8 @@ class Parser {
 								mk(EVar(tmp, null, mk(EArrayDecl([]), p1)), p1),
 								mapCompr(tmp, a[0]),
 								mk(EIdent(tmp), p1),
-							]), p1);
+							]),
+								p1);
 							return parseExprNext(e);
 						default:
 					}
@@ -544,9 +489,6 @@ class Parser {
 	}
 
 	function parseStructure(id) {
-		#if hscriptPos
-		var p1 = tokenMin;
-		#end
 		return switch (id) {
 			case "if":
 				ensure(TPOpen);
@@ -868,11 +810,7 @@ class Parser {
 									case TOp(op):
 										if (op == ">") break;
 										if (op.charCodeAt(0) == ">".code) {
-											#if hscriptPos
-											tokens.add({t: TOp(op.substr(1)), min: tokenMax - op.length - 1, max: tokenMax});
-											#else
 											tokens.add(TOp(op.substr(1)));
-											#end
 											break;
 										}
 									default:
@@ -907,7 +845,7 @@ class Parser {
 								switch arg.value {
 									case null:
 									case v:
-										error(ECustom('Default values not allowed in function types'), #if hscriptPos v.pmin, v.pmax #else 0, 0 #end);
+										error(ECustom('Default values not allowed in function types'), 0, 0);
 								}
 
 								CTNamed(arg.name, if (arg.opt) CTOpt(arg.t) else arg.t);
@@ -1213,11 +1151,7 @@ class Parser {
 	}
 
 	// ------------------------ lexing -------------------------------
-	inline function incPos() {
-		#if hscriptPos
-		readPos++;
-		#end
-	}
+	inline function incPos() {}
 
 	function readChar() {
 		incPos();
@@ -1230,9 +1164,6 @@ class Parser {
 		var esc = false;
 		var old = line;
 		var s = input;
-		#if hscriptPos
-		var p1 = readPos - 1;
-		#end
 		while (true) {
 			try {
 				incPos();
@@ -1314,24 +1245,9 @@ class Parser {
 	}
 
 	function token() {
-		#if hscriptPos
-		var t = tokens.pop();
-		if (t != null) {
-			tokenMin = t.min;
-			tokenMax = t.max;
-			return t.t;
-		}
-		oldTokenMin = tokenMin;
-		oldTokenMax = tokenMax;
-		tokenMin = (this.char < 0) ? readPos : readPos - 1;
-		var t = _token();
-		tokenMax = (this.char < 0) ? readPos - 1 : readPos - 2;
-		return t;
-		} function _token() {
-		#else
 		if (!tokens.isEmpty())
 			return tokens.pop();
-		#end
+
 		var char;
 		if (this.char < 0)
 			char = readChar();
@@ -1344,14 +1260,8 @@ class Parser {
 				case 0:
 					return TEof;
 				case 32, 9, 13: // space, tab, CR
-					#if hscriptPos
-					tokenMin++;
-					#end
 				case 10:
 					line++; // LF
-					#if hscriptPos
-					tokenMin++;
-					#end
 				case 48, 49, 50, 51, 52, 53, 54, 55, 56, 57: // 0...9
 					var n = (char - 48) * 1.0;
 					var exp = 0.;
