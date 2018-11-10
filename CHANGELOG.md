@@ -1,3 +1,7 @@
+### 1.1.1 (November 10, 2018)
+
+- fixed compilation with `-D hscriptPos` ([#14](https://github.com/vshaxe/hxcpp-debugger/issues/14))
+
 ### 1.1.0 (October 17, 2018)
 
 - added support for attach requests ([#1](https://github.com/vshaxe/hxcpp-debugger/issues/1))

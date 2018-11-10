@@ -1,12 +1,12 @@
 {
     "name": "hxcpp-debug-server",
-    "url" : "https://github.com/jasononeil/useless/",
+    "url" : "https://github.com/vshaxe/hxcpp-debugger",
     "license": "MIT",
-    "tags": ["cpp only"],
+    "tags": ["cpp"],
     "description": "debugger jsonrpc server",
-    "version": "1.0.0",
+    "version": "1.1.1",
     "classPath": "./",
-    "releasenote": "Initial release",
+    "releasenote": "See hxcpp-debugger changelog",
     "contributors": ["nulld"],
     "dependencies": {}
   }
