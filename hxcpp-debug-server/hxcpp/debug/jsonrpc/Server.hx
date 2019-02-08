@@ -185,6 +185,13 @@ class Server {
 			path2file[path.toUpperCase()] = file;
 			file2path[file.toUpperCase()] = path;
 		}
+
+		var classes = Debugger.getClasses();
+		hxcpp.debug.jsonrpc.eval.Interp.staticVariables = new Map<String, Dynamic>();
+		for (c in classes) {
+			var klass = Type.resolveClass(c);
+			hxcpp.debug.jsonrpc.eval.Interp.staticVariables.set(c, klass);
+		}
 		startQueue.push(true);
 
 		while (true) {

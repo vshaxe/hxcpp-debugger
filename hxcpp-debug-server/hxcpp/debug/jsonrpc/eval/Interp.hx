@@ -9,6 +9,8 @@ private enum Stop {
 }
 
 class Interp {
+	public static var staticVariables:Map<String, Dynamic>;
+
 	public var variables:Map<String, Dynamic>;
 
 	var locals:Map<String, {r:Dynamic}>;
@@ -234,8 +236,11 @@ class Interp {
 		if (l != null)
 			return l.r;
 		var v = variables.get(id);
-		if (v == null && !variables.exists(id))
+		if (v == null && !variables.exists(id)) {
+			v = staticVariables.get(id);
+		} else if (v == null) {
 			error(EUnknownVariable(id));
+		}
 		return v;
 	}
 
@@ -406,13 +411,13 @@ class Interp {
 					var map:Dynamic = {
 						if (isAllInt)
 							new haxe.ds.IntMap<Dynamic>();
-					else if (isAllString)
+						else if (isAllString)
 							new haxe.ds.StringMap<Dynamic>();
-					else if (isAllEnum)
+						else if (isAllEnum)
 							new haxe.ds.EnumValueMap<Dynamic, Dynamic>();
-					else if (isAllObject)
+						else if (isAllObject)
 							new haxe.ds.ObjectMap<Dynamic, Dynamic>();
-					else
+						else
 							throw 'Inconsistent key types';
 					}
 					for (n in 0...keys.length) {
