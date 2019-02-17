@@ -1,3 +1,7 @@
+### 1.1.2 (to be released)
+
+- fixed hxcpp-debug-server setup with spaces in username
+
 ### 1.1.1 (November 10, 2018)
 
 - fixed compilation with `-D hscriptPos` ([#14](https://github.com/vshaxe/hxcpp-debugger/issues/14))
