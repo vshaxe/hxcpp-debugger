@@ -33,7 +33,7 @@ Finally, you need a launch configuration:
             "name": "HXCPP",
             "type": "hxcpp",
             "request": "launch",
-            "program": "${workspaceRoot}/bin/application.exe"
+            "program": "${workspaceFolder}/bin/application.exe"
         }
     ]
 }

@@ -70,7 +70,7 @@
 							"program": {
 								"type": "string",
 								"description": "full path to executable.",
-								"default": "${workspaceRoot}/bin/yourExecutable.exe"
+								"default": "${workspaceFolder}/bin/yourExecutable.exe"
 							},
 							"receiveAdapterOutput": {
 								"type": "bool",
@@ -99,7 +99,7 @@
 						"name": "Hxcpp",
 						"type": "hxcpp",
 						"request": "launch",
-						"program": "${workspaceRoot}/bin/yourExecutable.exe"
+						"program": "${workspaceFolder}/bin/yourExecutable.exe"
 					}
 				]
 			}
