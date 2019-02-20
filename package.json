@@ -59,7 +59,7 @@
 						"haxe"
 					]
 				},
-				"program": "./bin/hxcpp_adapter.js",
+				"program": "./bin/adapter.js",
 				"runtime": "node",
 				"configurationAttributes": {
 					"launch": {
@@ -96,7 +96,7 @@
 				},
 				"initialConfigurations": [
 					{
-						"name": "Hxcpp",
+						"name": "HXCPP",
 						"type": "hxcpp",
 						"request": "launch",
 						"program": "${workspaceFolder}/bin/yourExecutable.exe"

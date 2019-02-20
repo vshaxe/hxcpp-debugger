@@ -3,7 +3,7 @@
 -lib vscode
 -cp src
 -cp hxcpp-debug-server
--js bin/hxcpp_adapter.js
+-js bin/adapter.js
 -main Adapter
 
 --next
