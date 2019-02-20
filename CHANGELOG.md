@@ -1,5 +1,6 @@
-### 1.1.2 (to be released)
+### 1.2.0 (February 20, 2019)
 
+- added some support for statics in watch / conditional breakpoints ([#17](https://github.com/vshaxe/hxcpp-debugger/issues/17))
 - fixed hxcpp-debug-server setup with spaces in username
 - fixed "Start Debugging" not doing anything without a `launch.json`
 - updated `${workspaceRoot}` to `${workspaceFolder}`
