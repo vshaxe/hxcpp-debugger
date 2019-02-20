@@ -1,6 +1,7 @@
 ### 1.1.2 (to be released)
 
 - fixed hxcpp-debug-server setup with spaces in username
+- fixed "Start Debugging" not doing anything without a `launch.json`
 - updated `${workspaceRoot}` to `${workspaceFolder}`
 
 ### 1.1.1 (November 10, 2018)

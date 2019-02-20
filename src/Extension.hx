@@ -2,7 +2,6 @@ import vscode.*;
 import Vscode.*;
 
 class Extension {
-	@:keep
 	@:expose("activate")
 	static function main(context:ExtensionContext) {
 		commands.registerCommand("hxcpp-debugger.setup", function() {
@@ -15,10 +14,20 @@ class Extension {
 		if (isExtensionPathChanged(context)) {
 			commands.executeCommand("hxcpp-debugger.setup");
 		}
+
+		Vscode.debug.registerDebugConfigurationProvider("hxcpp", {resolveDebugConfiguration: resolveDebugConfiguration});
 	}
 
 	static function isExtensionPathChanged(context:ExtensionContext):Bool {
 		var previousPath = context.globalState.get("previousExtensionPath");
 		return (context.extensionPath != previousPath);
+	}
+
+	static function resolveDebugConfiguration(folder:Null<WorkspaceFolder>, config:DebugConfiguration,
+			?token:CancellationToken):ProviderResult<DebugConfiguration> {
+		if (config.type == null) {
+			return null; // show launch.json
+		}
+		return config;
 	}
 }
