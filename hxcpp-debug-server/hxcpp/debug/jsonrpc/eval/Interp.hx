@@ -9,7 +9,7 @@ private enum Stop {
 }
 
 class Interp {
-	public static var staticVariables:Map<String, Dynamic>;
+	public static var globals(default, null):Map<String, Dynamic>;
 
 	public var variables:Map<String, Dynamic>;
 
@@ -237,7 +237,7 @@ class Interp {
 			return l.r;
 		var v = variables.get(id);
 		if (v == null && !variables.exists(id)) {
-			v = staticVariables.get(id);
+			v = globals.get(id);
 		} else if (v == null) {
 			error(EUnknownVariable(id));
 		}

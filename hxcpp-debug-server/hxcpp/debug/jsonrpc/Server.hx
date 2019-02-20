@@ -9,6 +9,7 @@ import cpp.vm.Deque;
 import hxcpp.debug.jsonrpc.eval.Parser;
 import hxcpp.debug.jsonrpc.eval.Interp;
 import hxcpp.debug.jsonrpc.eval.Expr;
+import hxcpp.debug.jsonrpc.eval.Interp;
 
 @:enum abstract ScopeId(String) to String {
 	var members = "Members";
@@ -187,10 +188,10 @@ class Server {
 		}
 
 		var classes = Debugger.getClasses();
-		hxcpp.debug.jsonrpc.eval.Interp.staticVariables = new Map<String, Dynamic>();
+		@:privateAccess Interp.globals = new Map<String, Dynamic>();
 		for (c in classes) {
 			var klass = Type.resolveClass(c);
-			hxcpp.debug.jsonrpc.eval.Interp.staticVariables.set(c, klass);
+			Interp.globals.set(c, klass);
 		}
 		startQueue.push(true);
 
