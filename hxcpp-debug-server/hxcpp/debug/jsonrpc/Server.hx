@@ -189,12 +189,34 @@ class Server {
 
 		var classes = Debugger.getClasses();
 		@:privateAccess Interp.globals = new Map<String, Dynamic>();
-		for (c in classes) {
-			var klass = Type.resolveClass(c);
-			Interp.globals.set(c, klass);
-		}
-		startQueue.push(true);
+		// globals declared inside hxcpp library not exposed to classes
+		Interp.globals.set("Math", Math);
+		Interp.globals.set("String", String);
 
+		var appStructure = {};
+		for (c in classes) {
+			var pack = c.split(".");
+			var klass = Type.resolveClass(c);
+			var globalValue = klass;
+			var currentNode = appStructure;
+
+			var globalName = pack.pop();
+			while (pack.length > 0) {
+				var pathPart = pack.shift();
+				if (!Reflect.hasField(currentNode, pathPart)) {
+					Reflect.setField(currentNode, pathPart, {});
+				}
+				currentNode = Reflect.field(currentNode, pathPart);
+			}
+			Reflect.setField(currentNode, globalName, globalValue);
+		}
+
+		for (key in Reflect.fields(appStructure)) {
+			var value = Reflect.field(appStructure, key);
+			Interp.globals.set(key, value);
+		}
+
+		startQueue.push(true);
 		while (true) {
 			var m = try {
 				readMessage();
@@ -202,7 +224,6 @@ class Server {
 				onDebuggerDetached();
 				return;
 			}
-
 			try {
 				processMessage(m);
 			} catch (e:Dynamic) {
