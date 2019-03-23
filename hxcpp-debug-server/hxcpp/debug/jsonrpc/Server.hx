@@ -89,12 +89,14 @@ class Server {
 		file2path = new Map<String, String>();
 		mainThread = Thread.current();
 		parser = new Parser();
+		started = false;
 
 		Debugger.enableCurrentThreadDebugging(false);
 		if (connect()) {
 			Thread.create(debuggerThreadMain);
 			startQueue.pop(true);
 			Debugger.enableCurrentThreadDebugging(true);
+			startQueue.pop(true);
 		} else {
 			waitForAttach();
 		}
@@ -294,6 +296,11 @@ class Server {
 
 			case Protocol.Continue:
 				Debugger.continueThreads(m.params.threadId, 1);
+				if (!started)
+				{
+					started = true;
+					startQueue.push(true);
+				}
 
 			case Protocol.Threads:
 				stateMutex.acquire();
