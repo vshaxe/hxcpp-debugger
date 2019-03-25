@@ -2,10 +2,16 @@ package hxcpp.debug.jsonrpc;
 
 import hxcpp.debug.jsonrpc.VariablesPrinter;
 import hxcpp.debug.jsonrpc.Protocol;
+#if haxe4
+import sys.thread.Thread;
+import sys.thread.Mutex;
+import sys.thread.Deque;
+#else
 import cpp.vm.Thread;
 import cpp.vm.Mutex;
-import cpp.vm.Debugger;
 import cpp.vm.Deque;
+#end
+import cpp.vm.Debugger;
 import hxcpp.debug.jsonrpc.eval.Parser;
 import hxcpp.debug.jsonrpc.eval.Interp;
 import hxcpp.debug.jsonrpc.eval.Expr;
@@ -89,12 +95,14 @@ class Server {
 		file2path = new Map<String, String>();
 		mainThread = Thread.current();
 		parser = new Parser();
+		started = false;
 
 		Debugger.enableCurrentThreadDebugging(false);
 		if (connect()) {
 			Thread.create(debuggerThreadMain);
 			startQueue.pop(true);
 			Debugger.enableCurrentThreadDebugging(true);
+			startQueue.pop(true);
 		} else {
 			waitForAttach();
 		}
@@ -294,6 +302,10 @@ class Server {
 
 			case Protocol.Continue:
 				Debugger.continueThreads(m.params.threadId, 1);
+				if (!started) {
+					started = true;
+					startQueue.push(true);
+				}
 
 			case Protocol.Threads:
 				stateMutex.acquire();

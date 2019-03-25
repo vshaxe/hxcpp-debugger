@@ -1,3 +1,12 @@
+### 1.2.2 (March 23, 2019)
+
+- fixed deprecation warnings with Haxe 4.0.0-rc.2 
+- fixed debugger not stopping on last line of `main()` ([#18](https://github.com/vshaxe/hxcpp-debugger/issues/18))
+
+### 1.2.1 (February 21, 2019)
+
+- fixed default registrations for watch / conditional breakpoints ([#17](https://github.com/vshaxe/hxcpp-debugger/issues/17))
+
 ### 1.2.0 (February 20, 2019)
 
 - added some support for statics in watch / conditional breakpoints ([#17](https://github.com/vshaxe/hxcpp-debugger/issues/17))
