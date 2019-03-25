@@ -337,39 +337,44 @@ class Server {
 
 				stateMutex.acquire();
 
-				if (currentThreadInfo != null) {
-					var refId = m.params.variablesReference;
-					var value:Value = references.get(refId);
-					var vars = VariablesPrinter.getInnerVariables(value, m.params.start, m.params.count);
+				try {
+					if (currentThreadInfo != null) {
+						var refId = m.params.variablesReference;
+						var value:Value = references.get(refId);
+						var vars = VariablesPrinter.getInnerVariables(value, m.params.start, m.params.count);
 
-					for (v in vars) {
-						var varInfo:VarInfo = {
-							name: v.name,
-							type: v.type,
-							value: "",
-							variablesReference: 0,
+						for (v in vars) {
+							var varInfo:VarInfo = {
+								name: v.name,
+								type: v.type,
+								value: "",
+								variablesReference: 0,
+							}
+							switch (v.value) {
+								case NameValueList(names, values):
+									throw "impossible";
+
+								case IntIndexed(value, length, _):
+									var refId = references.create(v.value);
+									varInfo.variablesReference = refId;
+									varInfo.indexedVariables = length;
+									varInfo.value = Std.string(value);
+
+								case StringIndexed(value, printedValue, names, _):
+									var refId = references.create(v.value);
+									varInfo.variablesReference = refId;
+									varInfo.namedVariables = names.length;
+									varInfo.value = printedValue;
+
+								case Single(value):
+									varInfo.value = value;
+							}
+							m.result.push(varInfo);
 						}
-						switch (v.value) {
-							case NameValueList(names, values):
-								throw "impossible";
-
-							case IntIndexed(value, length, _):
-								var refId = references.create(v.value);
-								varInfo.variablesReference = refId;
-								varInfo.indexedVariables = length;
-								varInfo.value = Std.string(value);
-
-							case StringIndexed(value, printedValue, names, _):
-								var refId = references.create(v.value);
-								varInfo.variablesReference = refId;
-								varInfo.namedVariables = names.length;
-								varInfo.value = printedValue;
-
-							case Single(value):
-								varInfo.value = value;
-						}
-						m.result.push(varInfo);
 					}
+				} catch (e:Dynamic) {
+					stateMutex.release();
+					throw e;
 				}
 				stateMutex.release();
 
