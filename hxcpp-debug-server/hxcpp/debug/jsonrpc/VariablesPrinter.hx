@@ -107,8 +107,10 @@ class VariablesPrinter {
 
 			case TClass(c):
 				var fields = getProps(c);
-				var staticFields = getClassProps(c);
-				var className = Type.getClassName(Type.getClass(value));
+				var klass = Type.getClass(value);
+				var superKlass = Type.getSuperClass(klass);
+				var className = Type.getClassName(klass);
+				var staticFields = (klass == superKlass) ? [] : getClassProps(c);
 				var dotIndex = className.lastIndexOf(".");
 				if (dotIndex != -1) {
 					className = className.substr(dotIndex + 1);
