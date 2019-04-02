@@ -38,7 +38,7 @@ class Adapter extends adapter.DebugSession {
 	}
 
 	var connection:Connection;
-	var postLaunchActions:Array<(Void -> Void)->Void>;
+	var postLaunchActions:Array<(Void->Void)->Void>;
 
 	function executePostLaunchActions(callback) {
 		function loop() {

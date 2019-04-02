@@ -4,7 +4,7 @@
 	"license": "MIT",
 	"tags": ["cpp"],
 	"description": "debugger jsonrpc server",
-	"version": "1.2.2",
+	"version": "1.2.3",
 	"classPath": "./",
 	"releasenote": "See hxcpp-debugger changelog",
 	"contributors": ["nulld", "Gama11"],

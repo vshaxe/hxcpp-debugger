@@ -1,7 +1,7 @@
 {
 	"name": "hxcpp-debugger",
 	"displayName": "HXCPP Debugger",
-	"version": "1.2.2",
+	"version": "1.2.3",
 	"publisher": "vshaxe",
 	"license": "MIT",
 	"description": "Debugger for Haxe/HXCPP applications",
@@ -104,5 +104,10 @@
 				]
 			}
 		]
+	},
+	"__metadata": {
+		"id": "3a689fe4-5899-4db6-b6a4-6641fc11022f",
+		"publisherDisplayName": "vshaxe",
+		"publisherId": "bdf58939-bf37-40d4-9543-90fcc14fd490"
 	}
 }

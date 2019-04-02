@@ -1,3 +1,10 @@
+### 1.2.3 (April 2, 2019)
+
+- fixed a crash on Windows when continuing from a breakpoint
+- fixed an issue with class instance printing with NME / Lime legacy
+- fixed inspection of static properties
+- fixed a deadlock when getting variables
+
 ### 1.2.2 (March 23, 2019)
 
 - fixed deprecation warnings with Haxe 4.0.0-rc.2 

@@ -386,8 +386,7 @@ class Parser {
 								mk(EVar(tmp, null, mk(EArrayDecl([]), p1)), p1),
 								mapCompr(tmp, a[0]),
 								mk(EIdent(tmp), p1),
-							]),
-								p1);
+							]), p1);
 							return parseExprNext(e);
 						default:
 					}
@@ -691,9 +690,9 @@ class Parser {
 
 				if (unops.get(op)) {
 					if (isBlock(e1) || switch (expr(e1)) {
-						case EParent(_): true;
-						default: false;
-					}) {
+							case EParent(_): true;
+							default: false;
+						}) {
 						push(tk);
 						return e1;
 					}

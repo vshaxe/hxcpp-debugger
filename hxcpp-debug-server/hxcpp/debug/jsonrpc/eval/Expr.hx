@@ -42,7 +42,6 @@ enum Expr {
 }
 
 typedef Argument = {name:String, ?t:CType, ?opt:Bool, ?value:Expr};
-
 typedef Metadata = Array<{name:String, params:Array<Expr>}>;
 
 enum CType {

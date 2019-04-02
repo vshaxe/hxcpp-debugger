@@ -110,12 +110,10 @@ class VariablesPrinter {
 				var staticFields = [];
 				var klass = Type.getClass(value);
 				var className = "Unknown";
-				if (klass != null)
-				{
+				if (klass != null) {
 					var superKlass = Type.getSuperClass(klass);
 					className = Type.getClassName(klass);
-					if (klass != superKlass)
-					{
+					if (klass != superKlass) {
 						staticFields = getClassProps(c);
 					}
 					var dotIndex = className.lastIndexOf(".");

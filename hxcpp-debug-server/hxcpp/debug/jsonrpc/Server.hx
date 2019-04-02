@@ -73,7 +73,7 @@ class Server {
 	var mainThread:Thread;
 	var interp:Interp;
 	var parser:Parser;
-	var isWindows:Bool = false;
+	var isWindows:Bool;
 
 	static var startQueue:Deque<Bool> = new Deque<Bool>();
 	@:keep static var inst = {
@@ -97,9 +97,7 @@ class Server {
 		mainThread = Thread.current();
 		parser = new Parser();
 		started = false;
-
-		var os = Sys.systemName();
-		isWindows = (Sys.systemName() == "Windows");
+		isWindows = Sys.systemName() == "Windows";
 
 		Debugger.enableCurrentThreadDebugging(false);
 		if (connect()) {
