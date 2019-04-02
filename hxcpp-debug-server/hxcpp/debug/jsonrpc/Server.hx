@@ -99,7 +99,7 @@ class Server {
 		started = false;
 
 		var os = Sys.systemName();
-		isWindows = (new EReg("window","i")).match(os);
+		isWindows = (Sys.systemName() == "Windows");
 
 		Debugger.enableCurrentThreadDebugging(false);
 		if (connect()) {
