@@ -73,6 +73,7 @@ class Server {
 	var mainThread:Thread;
 	var interp:Interp;
 	var parser:Parser;
+	var isWindows:Bool = false;
 
 	static var startQueue:Deque<Bool> = new Deque<Bool>();
 	@:keep static var inst = {
@@ -96,6 +97,9 @@ class Server {
 		mainThread = Thread.current();
 		parser = new Parser();
 		started = false;
+
+		var os = Sys.systemName();
+		isWindows = (new EReg("window","i")).match(os);
 
 		Debugger.enableCurrentThreadDebugging(false);
 		if (connect()) {
@@ -191,8 +195,8 @@ class Server {
 		for (i in 0...files.length) {
 			var file = files[i];
 			var path = fullPathes[i];
-			path2file[path.toUpperCase()] = file;
-			file2path[file.toUpperCase()] = path;
+			path2file[path2Key(path)] = file;
+			file2path[path2Key(file)] = path;
 		}
 
 		var classes = Debugger.getClasses();
@@ -274,10 +278,10 @@ class Server {
 				var params:SetBreakpointsParams = m.params;
 				var result = [];
 
-				if (!breakpoints.exists(params.file))
-					breakpoints[params.file] = [];
+				if (!breakpoints.exists(path2Key(params.file)))
+					breakpoints[path2Key(params.file)] = [];
 
-				for (rm in breakpoints[params.file]) {
+				for (rm in breakpoints[path2Key(params.file)]) {
 					Debugger.deleteBreakpoint(rm.id);
 				}
 				for (b in params.breakpoints) {
@@ -291,7 +295,7 @@ class Server {
 							continue;
 						}
 					}
-					bInfo.id = Debugger.addFileLineBreakpoint(path2file[params.file.toUpperCase()], bInfo.line);
+					bInfo.id = Debugger.addFileLineBreakpoint(path2file[path2Key(params.file)], bInfo.line);
 					result.push(bInfo);
 				}
 				breakpoints[params.file] = result;
@@ -478,7 +482,7 @@ class Server {
 						m.result.unshift({
 							id: i++,
 							name: '${s.className}.${s.functionName}',
-							source: file2path[s.fileName.toUpperCase()],
+							source: file2path[path2Key(s.fileName)],
 							line: s.lineNumber,
 							column: 0,
 							artificial: false
@@ -538,8 +542,8 @@ class Server {
 					sendEvent(Protocol.PauseStop, {threadId: threadNumber});
 				} else if (currentThreadInfo.status == cpp.vm.ThreadInfo.STATUS_STOPPED_BREAKPOINT) {
 					var bId = currentThreadInfo.breakpoint;
-					var path = file2path[fileName.toUpperCase()];
-					var thisFileBreakpoints = breakpoints[path];
+					var path = file2path[path2Key(fileName)];
+					var thisFileBreakpoints = breakpoints[path2Key(path)];
 					for (b in thisFileBreakpoints) {
 						if (b.id != bId)
 							continue;
@@ -580,6 +584,10 @@ class Server {
 			socket.close();
 			socket = null;
 		}
+	}
+
+	function path2Key(path:String):String {
+		return (isWindows) ? path.toUpperCase() : path;
 	}
 
 	public static function log(message:String) {
