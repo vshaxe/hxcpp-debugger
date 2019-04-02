@@ -107,13 +107,21 @@ class VariablesPrinter {
 
 			case TClass(c):
 				var fields = getProps(c);
+				var staticFields = [];
 				var klass = Type.getClass(value);
-				var superKlass = Type.getSuperClass(klass);
-				var className = Type.getClassName(klass);
-				var staticFields = (klass == superKlass) ? [] : getClassProps(c);
-				var dotIndex = className.lastIndexOf(".");
-				if (dotIndex != -1) {
-					className = className.substr(dotIndex + 1);
+				var className = "Unknown";
+				if (klass != null)
+				{
+					var superKlass = Type.getSuperClass(klass);
+					className = Type.getClassName(klass);
+					if (klass != superKlass)
+					{
+						staticFields = getClassProps(c);
+					}
+					var dotIndex = className.lastIndexOf(".");
+					if (dotIndex != -1) {
+						className = className.substr(dotIndex + 1);
+					}
 				}
 				var printedValue = className + ", " + Std.string(value);
 				var all = fields.concat(staticFields);
