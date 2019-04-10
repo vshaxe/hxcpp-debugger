@@ -296,7 +296,7 @@ class Server {
 					bInfo.id = Debugger.addFileLineBreakpoint(path2file[path2Key(params.file)], bInfo.line);
 					result.push(bInfo);
 				}
-				breakpoints[params.file] = result;
+				breakpoints[path2Key(params.file)] = result;
 				m.result = [for (b in result) b.id];
 
 			case Protocol.Pause:
