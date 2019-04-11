@@ -1,3 +1,7 @@
+### 1.2.4 (April 11, 2019)
+
+- fixed removal of breakpoints
+
 ### 1.2.3 (April 2, 2019)
 
 - fixed a crash on Windows when continuing from a breakpoint
