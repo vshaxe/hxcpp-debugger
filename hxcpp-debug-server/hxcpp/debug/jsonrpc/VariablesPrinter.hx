@@ -126,7 +126,8 @@ class VariablesPrinter {
 				StringIndexed(value, printedValue, [
 					for (f in all)
 						if (!Reflect.isFunction(propStaticGet(c, value, f)))
-							f], false, propStaticGet.bind(c));
+							f
+				], false, propStaticGet.bind(c));
 		}
 	}
 
@@ -195,41 +196,22 @@ class VariablesPrinter {
 	}
 
 	public static function getType(value:Dynamic):String {
-		switch (Type.typeof(value)) {
-			case TNull, TUnknown:
-				return "Unknown";
-
-			case TInt:
-				return "Int";
-
-			case TFloat:
-				return "Float";
-
-			case TBool:
-				return "Bool";
-
+		return switch (Type.typeof(value)) {
+			case TNull, TUnknown: "Unknown";
+			case TInt: "Int";
+			case TFloat: "Float";
+			case TBool: "Bool";
+			case TFunction: "Function";
+			case TEnum(e): Type.getEnumName(e);
+			case TClass(String): "String";
+			case TClass(Array): "Array";
+			case TClass(c): getClassName(c);
 			case TObject:
 				if (Std.is(value, Class)) {
-					return getClassName(cast value);
+					getClassName(cast value);
 				}
-				return "Anonymous";
-
-			case TFunction:
-				return "Function";
-
-			case TEnum(e):
-				return Type.getEnumName(e);
-
-			case TClass(String):
-				return "String";
-
-			case TClass(Array):
-				return "Array";
-
-			case TClass(c):
-				return getClassName(c);
+				"Anonymous";
 		}
-		return null;
 	}
 
 	static function getClassName(klass:Class<Dynamic>):String {
