@@ -50,9 +50,8 @@ Replace `/bin/application.exe` with the path to your executable file.
 
     ```hxml
     npm install
-    haxelib install hxnodejs
     haxelib install vscode
-    haxelib git vscode-debugadapter https://github.com/vshaxe/vscode-debugadapter-extern
+    haxelib install vscode-debugadapter
     ```
 
 5. Do `haxe build.hxml`

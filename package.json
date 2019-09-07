@@ -9,7 +9,7 @@
 		"name": "vshaxe"
 	},
 	"engines": {
-		"vscode": "^1.4.0"
+		"vscode": "^1.36.0"
 	},
 	"categories": [
 		"Debuggers"
@@ -32,8 +32,8 @@
 		"url": "https://github.com/vshaxe/hxcpp-debugger/issues"
 	},
 	"dependencies": {
-		"vscode-debugprotocol": "1.19.0",
-		"vscode-debugadapter": "1.19.0"
+		"vscode-debugprotocol": "1.36.0",
+		"vscode-debugadapter": "1.36.0"
 	},
 	"scripts": {
 		"vscode:prepublish": "haxe build.hxml"
@@ -54,11 +54,6 @@
 			{
 				"type": "hxcpp",
 				"label": "HXCPP",
-				"enableBreakpointsFor": {
-					"languageIds": [
-						"haxe"
-					]
-				},
 				"program": "./bin/adapter.js",
 				"runtime": "node",
 				"configurationAttributes": {

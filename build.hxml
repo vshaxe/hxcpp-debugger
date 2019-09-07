@@ -1,8 +1,8 @@
--lib vscode-debugadapter
--lib hxnodejs
 -lib vscode
+-lib vscode-debugadapter
 -cp src
 -cp hxcpp-debug-server
+-D js-es=6
 -js bin/adapter.js
 -main Adapter
 
@@ -10,5 +10,6 @@
 
 -lib vscode
 -cp src
+-D js-es=6
 -js bin/extension.js
 Extension

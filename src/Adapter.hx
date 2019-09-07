@@ -1,7 +1,7 @@
-import haxe.Json;
 import js.node.net.Socket;
 import haxe.io.Path;
-import protocol.debug.Types;
+import vscode.debugAdapter.DebugSession;
+import vscode.debugProtocol.DebugProtocol;
 import js.node.Buffer;
 import js.node.Net;
 import js.node.ChildProcess;
@@ -10,25 +10,24 @@ import js.node.net.Socket.SocketEvent;
 import js.node.stream.Readable.ReadableEvent;
 import hxcpp.debug.jsonrpc.Protocol;
 
-typedef HxppLaunchRequestArguments = {
-	> protocol.debug.Types.LaunchRequestArguments,
+typedef HxppLaunchRequestArguments = LaunchRequestArguments & {
 	var program:String;
 }
 
 @:keep
-class Adapter extends adapter.DebugSession {
+class Adapter extends DebugSession {
 	function traceToOutput(value:Dynamic, ?infos:haxe.PosInfos) {
 		var msg = value;
 		if (infos != null && infos.customParams != null) {
 			msg += " " + infos.customParams.join(" ");
 		}
 		msg += "\n";
-		sendEvent(new adapter.DebugSession.OutputEvent(msg));
+		sendEvent(new vscode.debugAdapter.DebugSession.OutputEvent(msg));
 	}
 
 	override function initializeRequest(response:InitializeResponse, args:InitializeRequestArguments) {
 		haxe.Log.trace = traceToOutput;
-		sendEvent(new adapter.DebugSession.InitializedEvent());
+		sendEvent(new vscode.debugAdapter.DebugSession.InitializedEvent());
 		response.body.supportsSetVariable = true;
 		response.body.supportsValueFormattingOptions = false;
 		response.body.supportsCompletionsRequest = true;
@@ -68,13 +67,13 @@ class Adapter extends adapter.DebugSession {
 		}
 
 		function onExit(_, _) {
-			sendEvent(new adapter.DebugSession.TerminatedEvent(false));
+			sendEvent(new vscode.debugAdapter.DebugSession.TerminatedEvent(false));
 		}
 
 		var server = Net.createServer(onConnected);
 		server.listen(6972, function() {
 			var args = [];
-			var haxeProcess = ChildProcess.spawn(executable, args, {stdio: Pipe, cwd: Path.directory(executable)});
+			var haxeProcess = ChildProcess.spawn(executable, args, {stdio: Pipe, cwd: haxe.io.Path.directory(executable)});
 			haxeProcess.stdout.on(ReadableEvent.Data, onStdout);
 			haxeProcess.stderr.on(ReadableEvent.Data, onStderr);
 			haxeProcess.on(ChildProcessEvent.Exit, onExit);
@@ -97,38 +96,38 @@ class Adapter extends adapter.DebugSession {
 		});
 
 		function onExit() {
-			sendEvent(new adapter.DebugSession.TerminatedEvent(false));
+			sendEvent(new vscode.debugAdapter.DebugSession.TerminatedEvent(false));
 		}
 		socket.on(SocketEvent.End, onExit);
 	}
 
 	function onStdout(data:Buffer) {
-		sendEvent(new adapter.DebugSession.OutputEvent(data.toString("utf-8"), stdout));
+		sendEvent(new vscode.debugAdapter.DebugSession.OutputEvent(data.toString("utf-8"), Stdout));
 	}
 
 	function onStderr(data:Buffer) {
-		sendEvent(new adapter.DebugSession.OutputEvent(data.toString("utf-8"), stderr));
+		sendEvent(new vscode.debugAdapter.DebugSession.OutputEvent(data.toString("utf-8"), Stderr));
 	}
 
 	function onEvent<P>(type:NotificationMethod<P>, data:P) {
 		switch (type) {
 			case Protocol.PauseStop:
-				sendEvent(new adapter.DebugSession.StoppedEvent("pause", data.threadId));
+				sendEvent(new vscode.debugAdapter.DebugSession.StoppedEvent("pause", data.threadId));
 
 			case Protocol.BreakpointStop:
-				sendEvent(new adapter.DebugSession.StoppedEvent("breakpoint", data.threadId));
+				sendEvent(new vscode.debugAdapter.DebugSession.StoppedEvent("breakpoint", data.threadId));
 
 			case Protocol.ExceptionStop:
-				var evt = new adapter.DebugSession.StoppedEvent("exception", 0);
+				var evt = new vscode.debugAdapter.DebugSession.StoppedEvent("exception", 0);
 				evt.body.text = data.text;
 				sendEvent(evt);
 
 			case Protocol.ThreadStart:
-				var evt = new adapter.DebugSession.ThreadEvent(ThreadEventReason.started, data.threadId);
+				var evt = new vscode.debugAdapter.DebugSession.ThreadEvent(ThreadEventReason.Started, data.threadId);
 				sendEvent(evt);
 
 			case Protocol.ThreadExit:
-				var evt = new adapter.DebugSession.ThreadEvent(ThreadEventReason.exited, data.threadId);
+				var evt = new vscode.debugAdapter.DebugSession.ThreadEvent(ThreadEventReason.Exited, data.threadId);
 				sendEvent(evt);
 		}
 	}
@@ -322,10 +321,10 @@ class Adapter extends adapter.DebugSession {
 		} else {
 			return null;
 		}
-		return cast new adapter.DebugSession.Source(fileName, convertDebuggerPathToClient(filePath));
+		return cast new vscode.debugAdapter.DebugSession.Source(fileName, convertDebuggerPathToClient(filePath));
 	}
 
 	static function main() {
-		adapter.DebugSession.run(Adapter);
+		DebugSession.run(Adapter);
 	}
 }
