@@ -68,7 +68,7 @@
 								"default": "${workspaceFolder}/bin/yourExecutable.exe"
 							},
 							"receiveAdapterOutput": {
-								"type": "bool",
+								"type": "boolean",
 								"description": "redirect adapter log to debug console",
 								"default": false
 							}
@@ -82,7 +82,7 @@
 								"default": "attach"
 							},
 							"receiveAdapterOutput": {
-								"type": "bool",
+								"type": "boolean",
 								"description": "redirect adapter log to debug console",
 								"default": false
 							}
