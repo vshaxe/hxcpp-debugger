@@ -35,8 +35,12 @@
 		"vscode-debugprotocol": "1.36.0",
 		"vscode-debugadapter": "1.36.0"
 	},
+	"devDependencies": {
+		"lix": "^15.8.9"
+	},
 	"scripts": {
-		"vscode:prepublish": "haxe build.hxml"
+		"vscode:prepublish": "haxe build.hxml",
+		"postinstall": "lix download"
 	},
 	"main": "bin/extension.js",
 	"activationEvents": [
