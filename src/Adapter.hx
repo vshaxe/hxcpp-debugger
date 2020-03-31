@@ -27,13 +27,13 @@ class Adapter extends DebugSession {
 
 	override function initializeRequest(response:InitializeResponse, args:InitializeRequestArguments) {
 		haxe.Log.trace = traceToOutput;
-		sendEvent(new vscode.debugAdapter.DebugSession.InitializedEvent());
 		response.body.supportsSetVariable = true;
 		response.body.supportsValueFormattingOptions = false;
 		response.body.supportsCompletionsRequest = true;
 		response.body.supportsConditionalBreakpoints = true;
 		sendResponse(response);
 		postLaunchActions = [];
+		sendEvent(new vscode.debugAdapter.DebugSession.InitializedEvent());
 	}
 
 	var connection:Connection;
