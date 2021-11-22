@@ -568,7 +568,7 @@ class Interp {
 	}
 
 	inline function isMap(o:Dynamic):Bool {
-		return Std.is(o, haxe.Constraints.IMap);
+		return Std.isOfType(o, haxe.Constraints.IMap);
 	}
 
 	inline function getMapValue(map:Dynamic, key:Dynamic):Dynamic {
