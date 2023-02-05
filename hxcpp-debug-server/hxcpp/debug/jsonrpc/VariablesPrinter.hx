@@ -207,7 +207,7 @@ class VariablesPrinter {
 			case TClass(Array): "Array";
 			case TClass(c): getClassName(c);
 			case TObject:
-				if (Std.is(value, Class)) {
+				if (Std.isOfType(value, Class)) {
 					getClassName(cast value);
 				}
 				"Anonymous";
