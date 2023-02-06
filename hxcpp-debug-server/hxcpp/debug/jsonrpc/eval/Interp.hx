@@ -398,8 +398,8 @@ class Interp {
 							case EBinop("=>", eKey, eValue): {
 									var key:Dynamic = expr(eKey);
 									var value:Dynamic = expr(eValue);
-									isAllString = isAllString && Std.is(key, String);
-									isAllInt = isAllInt && Std.is(key, Int);
+									isAllString = isAllString && Std.isOfType(key, String);
+									isAllInt = isAllInt && Std.isOfType(key, Int);
 									isAllObject = isAllObject && Reflect.isObject(key);
 									isAllEnum = isAllEnum && Reflect.isEnumValue(key);
 									keys.push(key);
