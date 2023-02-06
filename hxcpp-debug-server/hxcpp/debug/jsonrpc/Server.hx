@@ -264,8 +264,9 @@ class Server {
 
 		socketMutex.acquire();
 		var serialized:String = haxe.Json.stringify(m);
-		socket.output.writeInt32(serialized.length);
-		socket.output.writeString(serialized);
+		var bytes = haxe.io.Bytes.ofString(serialized);
+		socket.output.writeInt32(bytes.length);
+		socket.output.writeBytes(bytes, 0, bytes.length);
 		// trace('sendResponse: ${m.id} ${m.method}');
 		socketMutex.release();
 	}
