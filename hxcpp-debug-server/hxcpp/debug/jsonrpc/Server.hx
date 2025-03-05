@@ -62,7 +62,7 @@ class Server {
 	var socket:sys.net.Socket;
 	var stateMutex:Mutex;
 	var socketMutex:Mutex;
-	var currentThreadInfo:cpp.vm.ThreadInfo;
+	var currentThreadInfo:cpp.vm.Debugger.ThreadInfo;
 	var scopes:Map<ScopeId, Array<String>>;
 	var threads:Map<Int, String>;
 	var breakpoints:Map<String, Array<BreakpointInfo>>;
