@@ -62,7 +62,7 @@ class Server {
 	var socket:sys.net.Socket;
 	var stateMutex:Mutex;
 	var socketMutex:Mutex;
-	var currentThreadInfo:cpp.vm.ThreadInfo;
+	var currentThreadInfo:ThreadInfo;
 	var scopes:Map<ScopeId, Array<String>>;
 	var threads:Map<Int, String>;
 	var breakpoints:Map<String, Array<BreakpointInfo>>;
@@ -537,9 +537,9 @@ class Server {
 				references.clear();
 				stateMutex.release();
 
-				if (currentThreadInfo.status == cpp.vm.ThreadInfo.STATUS_STOPPED_BREAK_IMMEDIATE) {
+				if (currentThreadInfo.status == ThreadInfo.STATUS_STOPPED_BREAK_IMMEDIATE) {
 					sendEvent(Protocol.PauseStop, {threadId: threadNumber});
-				} else if (currentThreadInfo.status == cpp.vm.ThreadInfo.STATUS_STOPPED_BREAKPOINT) {
+				} else if (currentThreadInfo.status == ThreadInfo.STATUS_STOPPED_BREAKPOINT) {
 					var bId = currentThreadInfo.breakpoint;
 					var path = file2path[path2Key(fileName)];
 					var thisFileBreakpoints = breakpoints[path2Key(path)];
