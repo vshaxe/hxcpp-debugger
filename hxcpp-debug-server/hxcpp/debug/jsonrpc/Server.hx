@@ -27,6 +27,9 @@ typedef BreakpointInfo = {
 	var line:Int;
 	@:optional var column:Int;
 	@:optional var condition:Expr;
+	#if scriptable
+	@:optional var internalId:Int;
+	#end
 }
 
 private class References {
@@ -66,6 +69,12 @@ class Server {
 	var scopes:Map<ScopeId, Array<String>>;
 	var threads:Map<Int, String>;
 	var breakpoints:Map<String, Array<BreakpointInfo>>;
+	#if scriptable
+	var missedBreakpoints:Map<String, Array<BreakpointInfo>>;
+	var nextMappedBreakpointId:Int;
+	// map of hxcpp internal ids to ids used by client
+	var mappedBreakpointIds:Map<Int, Int>;
+	#end
 	var references:References;
 	var started:Bool;
 	var path2file:Map<String, String>;
@@ -100,6 +109,48 @@ class Server {
 		isWindows = Sys.systemName() == "Windows";
 
 		Debugger.enableCurrentThreadDebugging(false);
+
+		#if scriptable
+		nextMappedBreakpointId = -2;
+		mappedBreakpointIds = new Map<Int, Int>();
+		missedBreakpoints = new Map<String, Array<BreakpointInfo>>();
+
+		#if (hxcpp_api_level >= 500)
+		Debugger.setOnScriptLoadedFunction(function() {
+			generateFilePathMaps();
+
+			for (file in missedBreakpoints.keys()) {
+				if (!path2file.exists(file)) {
+					// file is still not found
+					continue;
+				}
+
+				var added = [];
+
+				for (rm in breakpoints[file]) {
+					#if scriptable
+					if (mappedBreakpointIds.exists(rm.id))
+						Debugger.deleteBreakpoint(mappedBreakpointIds[rm.id]);
+					else
+					#end
+					Debugger.deleteBreakpoint(rm.id);
+				}
+
+				for (bInfo in missedBreakpoints[file]) {
+					var id = Debugger.addFileLineBreakpoint(path2file[file], bInfo.line);
+					bInfo.internalId = id;
+					mappedBreakpointIds[id] = bInfo.id;
+				}
+
+				breakpoints[file] = added;
+				missedBreakpoints.remove(file);
+			}
+		});
+		#else
+		log("Please use Haxe 5 to debug with CPPIA");
+		#end
+		#end
+
 		if (connect()) {
 			Thread.create(debuggerThreadMain);
 			startQueue.pop(true);
@@ -183,11 +234,7 @@ class Server {
 		stateMutex.release();
 	}
 
-	private function debuggerThreadMain() {
-		Debugger.setEventNotificationHandler(handleThreadEvent);
-		Debugger.enableCurrentThreadDebugging(false);
-		Debugger.breakNow(true);
-
+	private function generateFilePathMaps() {
 		var fullPathes = Debugger.getFilesFullPath();
 		var files = Debugger.getFiles();
 		for (i in 0...files.length) {
@@ -196,6 +243,14 @@ class Server {
 			path2file[path2Key(path)] = file;
 			file2path[path2Key(file)] = path;
 		}
+	}
+
+	private function debuggerThreadMain() {
+		Debugger.setEventNotificationHandler(handleThreadEvent);
+		Debugger.enableCurrentThreadDebugging(false);
+		Debugger.breakNow(true);
+
+		generateFilePathMaps();
 
 		var classes = Debugger.getClasses();
 		@:privateAccess Interp.globals = new Map<String, Dynamic>();
@@ -276,13 +331,25 @@ class Server {
 			case Protocol.SetBreakpoints:
 				var params:SetBreakpointsParams = m.params;
 				var result = [];
+				var breakpointIds = [];
 
 				if (!breakpoints.exists(path2Key(params.file)))
 					breakpoints[path2Key(params.file)] = [];
 
 				for (rm in breakpoints[path2Key(params.file)]) {
-					Debugger.deleteBreakpoint(rm.id);
+					#if scriptable
+					if (rm.internalId != null && mappedBreakpointIds[rm.internalId] != null)
+						Debugger.deleteBreakpoint(rm.internalId);
+					else
+					#end
+						Debugger.deleteBreakpoint(rm.id);
 				}
+
+				#if scriptable
+				if (missedBreakpoints.exists(path2Key(params.file))) {
+					missedBreakpoints[path2Key(params.file)] = [];
+				}
+				#end
 				for (b in params.breakpoints) {
 					var bInfo:BreakpointInfo = {id: 0, line: b.line};
 					if (b.condition != null) {
@@ -294,11 +361,29 @@ class Server {
 							continue;
 						}
 					}
-					bInfo.id = Debugger.addFileLineBreakpoint(path2file[path2Key(params.file)], bInfo.line);
+					var id = Debugger.addFileLineBreakpoint(path2file[path2Key(params.file)], bInfo.line);
+					#if scriptable
+					if (id == -1) {
+						bInfo.id = nextMappedBreakpointId--;
+
+						var missedBreakpointsForFile = if (missedBreakpoints.exists(path2Key(params.file))) {
+							missedBreakpoints[path2Key(params.file)];
+						} else {
+							missedBreakpoints[path2Key(params.file)] = [];
+						};
+
+						missedBreakpointsForFile.push(bInfo);
+					} else if (mappedBreakpointIds.exists(id))
+						bInfo.id = mappedBreakpointIds[id];
+					else
+					#end
+						bInfo.id = id;
+					breakpointIds.push(bInfo.id);
+
 					result.push(bInfo);
 				}
 				breakpoints[path2Key(params.file)] = result;
-				m.result = [for (b in result) b.id];
+				m.result = breakpointIds;
 
 			case Protocol.Pause:
 				Debugger.breakNow(true);
