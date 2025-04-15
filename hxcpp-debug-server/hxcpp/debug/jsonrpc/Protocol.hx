@@ -18,7 +18,7 @@ typedef Message = {
 	@:optional var error:Error;
 }
 
-@:enum
+#if haxe4 enum #else @:enum #end
 abstract ErrorCode(Int) to Int {
 	var internal = 500;
 	var wrongRequest = 422;
