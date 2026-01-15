@@ -71,6 +71,16 @@
 								"description": "full path to executable.",
 								"default": "${workspaceFolder}/bin/yourExecutable.exe"
 							},
+							"cwd": {
+								"type": "string",
+								"description": "working directory for the executable",
+								"default": "${workspaceFolder}"
+							},
+							"args": {
+								"type": "array",
+								"description": "arguments for the executable",
+								"default": []
+							},
 							"receiveAdapterOutput": {
 								"type": "boolean",
 								"description": "redirect adapter log to debug console",
